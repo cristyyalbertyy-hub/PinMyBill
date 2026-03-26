@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ExpenseType {
+  pessoal
+  empresa
+  cliente
+}
+
+enum ExpenseStatus {
+  processado
+  rever
+}
+
+enum CategoryScope {
+  pessoal
+  empresa
+  cliente
+}
+
+model Category {
+  id    String        @id @default(cuid())
+  scope CategoryScope
+  name  String
+
+  @@unique([scope, name])
+}
+
+model Client {
+  id   String @id @default(cuid())
+  name String @unique
+}
+
+model Expense {
+  code            String        @id
+  merchant        String
+  amount          Decimal       @db.Decimal(12, 2)
+  currency        String
+  date            DateTime      @db.Date
+  type            ExpenseType
+  category        String
+  clientName      String?
+  status          ExpenseStatus
+  receiptImageUrl String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
