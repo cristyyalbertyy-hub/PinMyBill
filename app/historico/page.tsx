@@ -13,6 +13,15 @@ type GroupedNames = {
   cliente: string[];
 };
 
+type DbHealth = {
+  ok: boolean;
+  db?: {
+    hasUrl: boolean;
+    host: string | null;
+    provider: "missing" | "local" | "neon" | "remote";
+  };
+};
+
 function typeLabel(type: ExpenseType) {
   if (type === "empresa") return "Emp";
   if (type === "cliente") return "Cli";
@@ -29,6 +38,7 @@ export default function HistoricoPage() {
   const [clientNames, setClientNames] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   const [editingCode, setEditingCode] = useState<string | null>(null);
 
@@ -79,6 +89,13 @@ export default function HistoricoPage() {
       });
       setClientNames(cl.map((c) => c.name));
     } catch {
+      try {
+        const healthRes = await fetch("/api/health/db");
+        const health = (await healthRes.json()) as DbHealth;
+        setDbHealth(health);
+      } catch {
+        setDbHealth(null);
+      }
       setLoadError("Nao foi possivel carregar o historico (timeout ou erro Neon/Prisma).");
     } finally {
       setReady(true);
@@ -127,6 +144,17 @@ export default function HistoricoPage() {
     void loadAll();
   }, [loadAll]);
 
+  useEffect(() => {
+    void fetch("/api/health/db")
+      .then(async (res) => {
+        const health = (await res.json()) as DbHealth;
+        setDbHealth(health);
+      })
+      .catch(() => {
+        setDbHealth(null);
+      });
+  }, []);
+
   const patchExpense = useCallback(async (code: string, body: Record<string, unknown>) => {
     const res = await fetch(`/api/expenses/${encodeURIComponent(code)}`, {
       method: "PATCH",
@@ -152,9 +180,38 @@ export default function HistoricoPage() {
 
         <TopNav />
 
+        {dbHealth ? (
+          <div className="mt-4 flex justify-end">
+            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
+              <span aria-hidden>●</span>
+              <span>DB:</span>
+              <strong className="text-pin-ink">
+                {dbHealth.db?.provider === "neon"
+                  ? "Neon"
+                  : dbHealth.db?.provider === "local"
+                    ? "localhost"
+                    : dbHealth.db?.provider === "missing"
+                      ? "em falta"
+                      : "remota"}
+              </strong>
+              {dbHealth.db?.host ? (
+                <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
+                  {dbHealth.db.host}
+                </span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
         {loadError ? (
           <p className="mb-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
+            {dbHealth?.db?.provider === "local"
+              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
+              : ""}
+            {dbHealth?.db?.provider === "missing"
+              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
+              : ""}
           </p>
         ) : null}
 

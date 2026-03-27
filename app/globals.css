@@ -237,12 +237,32 @@ body.pin-app {
   }
 }
 
+@keyframes pin-quick-photo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 8px 20px -8px rgb(217 119 6 / 0.4),
+      0 0 0 0 rgb(251 191 36 / 0.36);
+  }
+  50% {
+    transform: scale(1.045);
+    box-shadow:
+      0 10px 24px -8px rgb(217 119 6 / 0.5),
+      0 0 0 9px rgb(251 191 36 / 0);
+  }
+}
+
 .pin-dash-float {
   animation: pin-dash-float 5.5s ease-in-out infinite;
 }
 
 .pin-dash-pin-glow {
   animation: pin-dash-pin-pulse 3s ease-in-out infinite;
+}
+
+.pin-quick-photo-pulse {
+  animation: pin-quick-photo-pulse 3.2s ease-in-out infinite;
 }
 
 .pin-dash-sparkle {
@@ -310,7 +330,8 @@ body.pin-app {
   .pin-dash-animate-d2,
   .pin-dash-animate-d3,
   .pin-dash-animate-d4,
-  .pin-dash-animate-d5 {
+  .pin-dash-animate-d5,
+  .pin-quick-photo-pulse {
     animation: none;
   }
 

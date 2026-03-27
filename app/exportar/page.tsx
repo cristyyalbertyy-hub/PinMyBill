@@ -12,6 +12,15 @@ type ExportMode =
   | "cliente-todo"
   | "cliente-periodo";
 
+type DbHealth = {
+  ok: boolean;
+  db?: {
+    hasUrl: boolean;
+    host: string | null;
+    provider: "missing" | "local" | "neon" | "remote";
+  };
+};
+
 function fmtAmount(n: number) {
   if (!Number.isFinite(n)) return "";
   return n.toFixed(2);
@@ -60,18 +69,42 @@ export default function ExportarPage() {
   const [hiddenRows, setHiddenRows] = useState<string[]>([]);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   useEffect(() => {
     void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
       .then(async ([ex, cl]) => {
+        if (!ex.ok || !cl.ok) throw new Error("Falha a carregar dados.");
         const expenses = (await ex.json()) as ExpenseItem[];
         const clRows = (await cl.json()) as { name: string }[];
         if (Array.isArray(expenses)) setExpenseItems(expenses);
         const names = clRows.map((r) => r.name);
         setClients(names);
         if (names[0]) setClientName((prev) => prev || names[0]);
+        setLoadError(null);
       })
-      .catch(() => {});
+      .catch(async () => {
+        setLoadError("Nao foi possivel carregar exportacao (timeout ou erro Neon/Prisma).");
+        try {
+          const healthRes = await fetch("/api/health/db");
+          const health = (await healthRes.json()) as DbHealth;
+          setDbHealth(health);
+        } catch {
+          setDbHealth(null);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    void fetch("/api/health/db")
+      .then(async (res) => {
+        const health = (await res.json()) as DbHealth;
+        setDbHealth(health);
+      })
+      .catch(() => {
+        setDbHealth(null);
+      });
   }, []);
 
   const filteredRows = useMemo(() => {
@@ -261,6 +294,41 @@ export default function ExportarPage() {
         </p>
 
         <TopNav />
+
+        {dbHealth ? (
+          <div className="mt-4 flex justify-end">
+            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
+              <span aria-hidden>●</span>
+              <span>DB:</span>
+              <strong className="text-pin-ink">
+                {dbHealth.db?.provider === "neon"
+                  ? "Neon"
+                  : dbHealth.db?.provider === "local"
+                    ? "localhost"
+                    : dbHealth.db?.provider === "missing"
+                      ? "em falta"
+                      : "remota"}
+              </strong>
+              {dbHealth.db?.host ? (
+                <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
+                  {dbHealth.db.host}
+                </span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
+        {loadError ? (
+          <p className="mt-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
+            {loadError}
+            {dbHealth?.db?.provider === "local"
+              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
+              : ""}
+            {dbHealth?.db?.provider === "missing"
+              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
+              : ""}
+          </p>
+        ) : null}
 
         <section className="pin-card p-6 text-pin-ink">
           <h2 className="text-lg font-bold text-pin-ink">Filtros de exportacao</h2>

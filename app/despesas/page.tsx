@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Cropper, { type Area } from "react-easy-crop";
 import { TopNav } from "@/components/top-nav";
 import type { CurrencyCode, ExpenseType } from "@/lib/mock-data";
 
@@ -10,8 +12,62 @@ type GroupedNames = {
   cliente: string[];
 };
 
+type DbHealth = {
+  ok: boolean;
+  db?: {
+    hasUrl: boolean;
+    host: string | null;
+    provider: "missing" | "local" | "neon" | "remote";
+  };
+};
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Falha ao ler imagem para recorte."));
+    img.src = src;
+  });
+}
+
+async function buildCroppedFile(
+  sourceUrl: string,
+  area: Area,
+  fileNameBase: string,
+): Promise<File> {
+  const image = await loadImage(sourceUrl);
+  const canvas = document.createElement("canvas");
+  const width = Math.max(1, Math.round(area.width));
+  const height = Math.max(1, Math.round(area.height));
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Falha ao inicializar canvas.");
+
+  ctx.drawImage(
+    image,
+    Math.round(area.x),
+    Math.round(area.y),
+    width,
+    height,
+    0,
+    0,
+    width,
+    height,
+  );
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+  if (!blob) throw new Error("Falha ao criar imagem recortada.");
+
+  const safeBase = fileNameBase.replace(/\.[^/.]+$/, "");
+  return new File([blob], `${safeBase}-recorte.jpg`, { type: "image/jpeg" });
+}
+
 export default function DespesasPage() {
+  const searchParams = useSearchParams();
   const OTHER_CATEGORY_SENTINEL = "__OUTRA__";
+  const OTHER_CURRENCY_SENTINEL = "OUTRO";
   const [categoryNames, setCategoryNames] = useState<GroupedNames>({
     pessoal: [],
     empresa: [],
@@ -20,6 +76,7 @@ export default function DespesasPage() {
   const [clientNames, setClientNames] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<ExpenseType>("empresa");
@@ -27,9 +84,19 @@ export default function DespesasPage() {
   const [uploadOtherCategoryName, setUploadOtherCategoryName] = useState("");
   const [uploadAmount, setUploadAmount] = useState("0");
   const [uploadCurrency, setUploadCurrency] = useState<CurrencyCode>("AED");
+  const [uploadOtherCurrency, setUploadOtherCurrency] = useState("");
   const [uploadClient, setUploadClient] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [cropSourceUrl, setCropSourceUrl] = useState<string | null>(null);
+  const [cropSourceName, setCropSourceName] = useState("recibo");
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1.2);
+  const [cropAreaPixels, setCropAreaPixels] = useState<Area | null>(null);
+  const [cropSaving, setCropSaving] = useState(false);
+  const [cropError, setCropError] = useState<string | null>(null);
 
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -38,17 +105,71 @@ export default function DespesasPage() {
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const quickCameraTriggeredRef = useRef(false);
+  const cropObjectUrlRef = useRef<string | null>(null);
+  const cropAreaPixelsRef = useRef<Area | null>(null);
+  const uploadPreviewUrlRef = useRef<string | null>(null);
+
+  const openCropForFile = useCallback((file: File | null) => {
+    if (!file) return;
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+    const nextUrl = URL.createObjectURL(file);
+    cropObjectUrlRef.current = nextUrl;
+    setCropSourceUrl(nextUrl);
+    setCropSourceName(file.name || "recibo");
+    setCrop({ x: 0, y: 0 });
+    setZoom(1.2);
+    setCropAreaPixels(null);
+    cropAreaPixelsRef.current = null;
+    setCropError(null);
+    setCropOpen(true);
+  }, []);
+
+  const closeCropModal = useCallback(() => {
+    setCropOpen(false);
+    setCropError(null);
+    setCropSaving(false);
+    setZoom(1.2);
+    setCropAreaPixels(null);
+    cropAreaPixelsRef.current = null;
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+    setCropSourceUrl(null);
+  }, []);
 
   function handleCameraImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-    setUploadFile(file);
+    openCropForFile(file);
     if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
   function handleGalleryImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-    setUploadFile(file);
+    openCropForFile(file);
     if (cameraInputRef.current) cameraInputRef.current.value = "";
+  }
+
+  async function applyCrop() {
+    const finalArea = cropAreaPixelsRef.current ?? cropAreaPixels;
+    if (!cropSourceUrl || !finalArea) {
+      setCropError("Ajusta a foto (com zoom) para recortar a fatura.");
+      return;
+    }
+    setCropSaving(true);
+    setCropError(null);
+    try {
+      const cropped = await buildCroppedFile(cropSourceUrl, finalArea, cropSourceName);
+      setUploadFile(cropped);
+      closeCropModal();
+    } catch (e) {
+      setCropError(e instanceof Error ? e.message : "Falha ao recortar imagem.");
+      setCropSaving(false);
+    }
   }
 
   const loadAll = useCallback(async () => {
@@ -90,6 +211,13 @@ export default function DespesasPage() {
         return names[0] ?? "";
       });
     } catch {
+      try {
+        const healthRes = await fetch("/api/health/db");
+        const health = (await healthRes.json()) as DbHealth;
+        setDbHealth(health);
+      } catch {
+        setDbHealth(null);
+      }
       setLoadError(
         "Nao foi possivel carregar os dados (timeout ou erro Neon/Prisma). Verifica DATABASE_URL e se o Neon esta acessivel."
       );
@@ -101,6 +229,40 @@ export default function DespesasPage() {
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (searchParams.get("quickPhoto") !== "1") return;
+    if (quickCameraTriggeredRef.current) return;
+    quickCameraTriggeredRef.current = true;
+    setUploadError(null);
+    const timer = setTimeout(() => {
+      cameraInputRef.current?.click();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [ready, searchParams]);
+
+  useEffect(
+    () => () => {
+      if (cropObjectUrlRef.current) URL.revokeObjectURL(cropObjectUrlRef.current);
+      if (uploadPreviewUrlRef.current) URL.revokeObjectURL(uploadPreviewUrlRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (uploadPreviewUrlRef.current) {
+      URL.revokeObjectURL(uploadPreviewUrlRef.current);
+      uploadPreviewUrlRef.current = null;
+    }
+    if (!uploadFile) {
+      setUploadPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(uploadFile);
+    uploadPreviewUrlRef.current = url;
+    setUploadPreviewUrl(url);
+  }, [uploadFile]);
 
   useEffect(() => {
     const list = categoryNames[uploadType];
@@ -166,6 +328,10 @@ export default function DespesasPage() {
       setUploadError("Escolhe uma imagem de recibo.");
       return;
     }
+    if (uploadCurrency === OTHER_CURRENCY_SENTINEL && !uploadOtherCurrency.trim()) {
+      setUploadError("Escreve a outra moeda (ex.: BRL).");
+      return;
+    }
 
     closeNewClientModal();
 
@@ -216,7 +382,10 @@ export default function DespesasPage() {
         body: JSON.stringify({
           merchant: uploadFile.name.replace(/\.[^/.]+$/, ""),
           amount: Number(uploadAmount) || 0,
-          currency: uploadCurrency,
+          currency:
+            uploadCurrency === OTHER_CURRENCY_SENTINEL
+              ? uploadOtherCurrency.trim().toUpperCase()
+              : uploadCurrency,
           type: uploadType,
           category: cat,
           clientName: uploadType === "cliente" ? uploadClient : null,
@@ -229,6 +398,8 @@ export default function DespesasPage() {
       await createRes.json();
       setUploadFile(null);
       setUploadAmount("0");
+      setUploadCurrency("AED");
+      setUploadOtherCurrency("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao enviar recibo.";
       setUploadError(message);
@@ -250,9 +421,38 @@ export default function DespesasPage() {
 
         <TopNav />
 
+        {dbHealth ? (
+          <div className="mt-4 flex justify-end">
+            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
+              <span aria-hidden>●</span>
+              <span>DB:</span>
+              <strong className="text-pin-ink">
+                {dbHealth.db?.provider === "neon"
+                  ? "Neon"
+                  : dbHealth.db?.provider === "local"
+                    ? "localhost"
+                    : dbHealth.db?.provider === "missing"
+                      ? "em falta"
+                      : "remota"}
+              </strong>
+              {dbHealth.db?.host ? (
+                <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
+                  {dbHealth.db.host}
+                </span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
         {loadError ? (
           <p className="mb-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
+            {dbHealth?.db?.provider === "local"
+              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
+              : ""}
+            {dbHealth?.db?.provider === "missing"
+              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
+              : ""}
           </p>
         ) : null}
 
@@ -335,9 +535,44 @@ export default function DespesasPage() {
                 </button>
               </div>
               {uploadFile ? (
-                <p className="text-sm text-pin-muted">
-                  Ficheiro: <span className="font-medium text-pin-ink">{uploadFile.name}</span>
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-pin-muted">
+                    Ficheiro: <span className="font-medium text-pin-ink">{uploadFile.name}</span>
+                  </p>
+                  {uploadPreviewUrl ? (
+                    <div className="max-w-[14rem] overflow-hidden rounded-xl border border-stone-200/80 bg-white/80 p-1 shadow-sm dark:border-stone-700 dark:bg-stone-900/60">
+                      <img
+                        src={uploadPreviewUrl}
+                        alt="Pre-visualizacao da imagem recortada"
+                        className="h-auto w-full rounded-lg object-contain"
+                      />
+                    </div>
+                  ) : null}
+                  {uploadPreviewUrl ? (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openCropForFile(uploadFile)}
+                        className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
+                        aria-label="Recortar de novo a imagem"
+                      >
+                        Recortar de novo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (cropOpen) closeCropModal();
+                          setUploadFile(null);
+                          setUploadError(null);
+                        }}
+                        className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
+                        aria-label="Limpar a imagem do recibo"
+                      >
+                        Limpar imagem
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <p className="text-sm text-pin-soft">Nenhuma imagem selecionada ainda.</p>
               )}
@@ -432,7 +667,13 @@ export default function DespesasPage() {
               Moeda
               <select
                 value={uploadCurrency}
-                onChange={(event) => setUploadCurrency(event.target.value as CurrencyCode)}
+                onChange={(event) => {
+                  const value = event.target.value as CurrencyCode;
+                  setUploadCurrency(value);
+                  if (value !== OTHER_CURRENCY_SENTINEL) {
+                    setUploadOtherCurrency("");
+                  }
+                }}
                 className="pin-field"
               >
                 <option value="AED">AED</option>
@@ -440,9 +681,21 @@ export default function DespesasPage() {
                 <option value="SAR">SAR</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
-                <option value="OUTRO">Outro</option>
+                <option value={OTHER_CURRENCY_SENTINEL}>Outra...</option>
               </select>
             </label>
+            {uploadCurrency === OTHER_CURRENCY_SENTINEL ? (
+              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                Outra moeda
+                <input
+                  value={uploadOtherCurrency}
+                  onChange={(event) => setUploadOtherCurrency(event.target.value.toUpperCase())}
+                  className="pin-field"
+                  placeholder="Ex: BRL"
+                  maxLength={12}
+                />
+              </label>
+            ) : null}
             <div className="flex items-end">
               <button
                 type="submit"
@@ -506,6 +759,73 @@ export default function DespesasPage() {
                 <button
                   type="button"
                   onClick={closeNewClientModal}
+                  className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {cropOpen && cropSourceUrl ? (
+          <div
+            className="fixed inset-0 z-[75] flex items-end justify-center bg-stone-900/60 backdrop-blur-[2px] md:items-center"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="crop-title"
+          >
+            <div className="pin-card w-full max-w-2xl rounded-t-3xl border-t-4 border-t-pin-warm p-4 shadow-2xl md:rounded-2xl md:p-6">
+              <h3 id="crop-title" className="text-lg font-bold text-pin-ink">
+                Ajustar foto da fatura
+              </h3>
+              <p className="mt-1 text-sm text-pin-muted">
+                Move e aproxima (zoom) para ficar apenas com a fatura no enquadramento.
+              </p>
+              <div className="relative mt-4 h-[50vh] min-h-[18rem] overflow-hidden rounded-2xl bg-stone-900">
+                <Cropper
+                  image={cropSourceUrl}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={3 / 4}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, areaPixels) => {
+                    setCropAreaPixels(areaPixels);
+                    cropAreaPixelsRef.current = areaPixels;
+                  }}
+                  showGrid={false}
+                  objectFit="contain"
+                />
+              </div>
+              <label className="mt-4 flex flex-col gap-2 text-sm font-medium text-pin-muted">
+                Zoom
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  value={zoom}
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                />
+                <span className="text-xs text-pin-soft">Dica: para trim real, usa zoom acima de 1.0.</span>
+              </label>
+              {cropError ? (
+                <p className="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{cropError}</p>
+              ) : null}
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={cropSaving}
+                  onClick={() => void applyCrop()}
+                  className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm"
+                >
+                  {cropSaving ? "A recortar..." : "Usar recorte"}
+                </button>
+                <button
+                  type="button"
+                  disabled={cropSaving}
+                  onClick={closeCropModal}
                   className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
                 >
                   Cancelar

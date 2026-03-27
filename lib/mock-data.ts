@@ -1,5 +1,5 @@
 export type ExpenseType = "pessoal" | "empresa" | "cliente";
-export type CurrencyCode = "AED" | "QAR" | "SAR" | "USD" | "EUR" | "OUTRO";
+export type CurrencyCode = string;
 
 export type ExpenseItem = {
   id: string;

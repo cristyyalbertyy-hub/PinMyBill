@@ -15,6 +15,7 @@ type Props = {
 };
 
 const currencyOptions: CurrencyCode[] = ["AED", "QAR", "SAR", "USD", "EUR", "OUTRO"];
+const OTHER_CURRENCY_SENTINEL = "OUTRO";
 const OTHER_CATEGORY_SENTINEL = "__OUTRA__";
 
 export function EditExpenseModal({
@@ -34,7 +35,16 @@ export function EditExpenseModal({
   const [category, setCategory] = useState<string>(() => item?.category ?? "");
   const [otherCategoryName, setOtherCategoryName] = useState("");
   const [amount, setAmount] = useState<string>(() => String(item?.amount ?? 0));
-  const [currency, setCurrency] = useState<CurrencyCode>(() => item?.currency ?? "AED");
+  const [currency, setCurrency] = useState<CurrencyCode>(() => {
+    const current = (item?.currency ?? "AED").toUpperCase();
+    if (currencyOptions.includes(current)) return current;
+    return OTHER_CURRENCY_SENTINEL;
+  });
+  const [otherCurrency, setOtherCurrency] = useState<string>(() => {
+    const current = (item?.currency ?? "AED").toUpperCase();
+    if (currencyOptions.includes(current)) return "";
+    return current;
+  });
 
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -118,10 +128,14 @@ export function EditExpenseModal({
       if (onCategoryCreated) await onCategoryCreated();
     }
 
+    if (currency === OTHER_CURRENCY_SENTINEL && !otherCurrency.trim()) {
+      throw new Error("Escreve a outra moeda (ex.: BRL).");
+    }
+
     const updates: Record<string, unknown> = {
       type,
       amount: safeAmount,
-      currency,
+      currency: currency === OTHER_CURRENCY_SENTINEL ? otherCurrency.trim().toUpperCase() : currency,
       category: finalCategory,
       clientName: type === "cliente" ? clientName : null,
     };
@@ -242,7 +256,13 @@ export function EditExpenseModal({
               Moeda
               <select
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                onChange={(e) => {
+                  const value = e.target.value as CurrencyCode;
+                  setCurrency(value);
+                  if (value !== OTHER_CURRENCY_SENTINEL) {
+                    setOtherCurrency("");
+                  }
+                }}
                 className="pin-field pin-field-lg"
               >
                 {currencyOptions.map((c) => (
@@ -252,6 +272,18 @@ export function EditExpenseModal({
                 ))}
               </select>
             </label>
+            {currency === OTHER_CURRENCY_SENTINEL ? (
+              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                Outra moeda
+                <input
+                  value={otherCurrency}
+                  onChange={(e) => setOtherCurrency(e.target.value.toUpperCase())}
+                  className="pin-field pin-field-lg"
+                  placeholder="Ex: BRL"
+                  maxLength={12}
+                />
+              </label>
+            ) : null}
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
               Valor
               <input

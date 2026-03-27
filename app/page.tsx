@@ -88,7 +88,33 @@ export default function Home() {
           </div>
 
           <div className="pin-dash-animate pin-dash-animate-d2 flex justify-center md:justify-end">
-            <DashboardIllustration />
+            <div className="relative">
+              <DashboardIllustration />
+              <Link
+                href="/despesas?quickPhoto=1"
+                className="pin-quick-photo-pulse absolute right-2 top-3 inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-lg shadow-amber-500/35 ring-2 ring-white/80 transition hover:scale-105 hover:bg-amber-300 active:scale-95 motion-reduce:animate-none dark:ring-stone-900"
+                aria-label="Atalho rapido para tirar foto do recibo"
+                title="Atalho rapido: tirar foto"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-7 w-7"
+                  aria-hidden
+                >
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </Link>
+              <span className="absolute right-0 top-[4.8rem] rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-700 shadow-sm ring-1 ring-amber-300/70 dark:bg-stone-900/85 dark:text-amber-300 dark:ring-amber-600/50">
+                Foto já
+              </span>
+            </div>
           </div>
         </header>
 
