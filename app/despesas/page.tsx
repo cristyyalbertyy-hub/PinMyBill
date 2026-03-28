@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Cropper, { type Area } from "react-easy-crop";
 import { TopNav } from "@/components/top-nav";
@@ -64,7 +64,7 @@ async function buildCroppedFile(
   return new File([blob], `${safeBase}-recorte.jpg`, { type: "image/jpeg" });
 }
 
-export default function DespesasPage() {
+function DespesasPageContent() {
   const searchParams = useSearchParams();
   const OTHER_CATEGORY_SENTINEL = "__OUTRA__";
   const OTHER_CURRENCY_SENTINEL = "OUTRO";
@@ -86,6 +86,8 @@ export default function DespesasPage() {
   const [uploadCurrency, setUploadCurrency] = useState<CurrencyCode>("AED");
   const [uploadOtherCurrency, setUploadOtherCurrency] = useState("");
   const [uploadClient, setUploadClient] = useState("");
+  /** Sem imagem e obrigatorio; com imagem e opcional (cai no nome do ficheiro). */
+  const [uploadMerchant, setUploadMerchant] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
@@ -324,12 +326,21 @@ export default function DespesasPage() {
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!uploadFile) {
-      setUploadError("Escolhe uma imagem de recibo.");
-      return;
-    }
     if (uploadCurrency === OTHER_CURRENCY_SENTINEL && !uploadOtherCurrency.trim()) {
       setUploadError("Escreve a outra moeda (ex.: BRL).");
+      return;
+    }
+
+    const merchantTrim = uploadMerchant.trim();
+    const merchantFromFilename = uploadFile
+      ? uploadFile.name.replace(/\.[^/.]+$/, "")
+      : "";
+    const merchant =
+      merchantTrim || (uploadFile ? merchantFromFilename : "");
+    if (!merchant) {
+      setUploadError(
+        "Sem imagem: escreve comerciante ou descricao. Com imagem: opcional (usa o nome do ficheiro se vazio).",
+      );
       return;
     }
 
@@ -339,18 +350,22 @@ export default function DespesasPage() {
     setUploadError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", uploadFile);
+      let receiptImageUrl: string | null = null;
+      if (uploadFile) {
+        const formData = new FormData();
+        formData.append("file", uploadFile);
 
-      const response = await fetch("/api/uploads", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("/api/uploads", {
+          method: "POST",
+          body: formData,
+        });
 
-      const result = (await response.json()) as { url?: string; error?: string };
+        const result = (await response.json()) as { url?: string; error?: string };
 
-      if (!response.ok || !result.url) {
-        throw new Error(result.error ?? "Falha no upload.");
+        if (!response.ok || !result.url) {
+          throw new Error(result.error ?? "Falha no upload.");
+        }
+        receiptImageUrl = result.url;
       }
 
       let cat = uploadCategory || categoryOptions[uploadType][0] || "Geral";
@@ -380,7 +395,7 @@ export default function DespesasPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          merchant: uploadFile.name.replace(/\.[^/.]+$/, ""),
+          merchant,
           amount: Number(uploadAmount) || 0,
           currency:
             uploadCurrency === OTHER_CURRENCY_SENTINEL
@@ -390,13 +405,14 @@ export default function DespesasPage() {
           category: cat,
           clientName: uploadType === "cliente" ? uploadClient : null,
           status: "processado",
-          receiptImageUrl: result.url,
+          receiptImageUrl,
         }),
       });
 
       if (!createRes.ok) throw new Error("Falha ao guardar despesa.");
       await createRes.json();
       setUploadFile(null);
+      setUploadMerchant("");
       setUploadAmount("0");
       setUploadCurrency("AED");
       setUploadOtherCurrency("");
@@ -415,8 +431,8 @@ export default function DespesasPage() {
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Despesas</h1>
         <p className="pin-lead mb-8 text-base">
-          Entrada de dados: tirar foto, preencher e guardar. O historico fica em{" "}
-          <strong className="text-pin-ink">Historico</strong>.
+          Podes guardar com ou sem foto; sem imagem, indica comerciante ou descricao. Mais tarde podes
+          acrescentar a foto em <strong className="text-pin-ink">Historico</strong> (Modificar).
         </p>
 
         <TopNav />
@@ -574,9 +590,25 @@ export default function DespesasPage() {
                   ) : null}
                 </div>
               ) : (
-                <p className="text-sm text-pin-soft">Nenhuma imagem selecionada ainda.</p>
+                <p className="text-sm text-pin-soft">
+                  Nenhuma imagem ainda — podes guardar mesmo assim (preenche comerciante abaixo).
+                </p>
               )}
             </div>
+            <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-3">
+              Comerciante ou descricao
+              <input
+                value={uploadMerchant}
+                onChange={(event) => setUploadMerchant(event.target.value)}
+                className="pin-field"
+                placeholder={
+                  uploadFile
+                    ? "Opcional se tiveres imagem (usa o nome do ficheiro se vazio)"
+                    : "Obrigatorio sem imagem de recibo"
+                }
+                autoComplete="off"
+              />
+            </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
               Tipo
               <select
@@ -839,5 +871,21 @@ export default function DespesasPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function DespesasPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-sm font-medium text-pin-muted">A carregar...</p>
+          </div>
+        </main>
+      }
+    >
+      <DespesasPageContent />
+    </Suspense>
   );
 }

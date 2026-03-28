@@ -69,6 +69,8 @@ export default function ExportarPage() {
   const [hiddenRows, setHiddenRows] = useState<string[]>([]);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  /** Se true, o PDF inclui uma secao com totais por moeda apos a tabela (antes das fotos). */
+  const [pdfIncludeTotals, setPdfIncludeTotals] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
@@ -228,7 +230,22 @@ export default function ExportarPage() {
         pageBreak: "auto",
       });
 
-      // Totais por moeda ficam so no ecra, nao no PDF.
+      type DocWithTable = typeof doc & { lastAutoTable?: { finalY: number } };
+      const afterTable = doc as DocWithTable;
+      let yAfterTable = afterTable.lastAutoTable?.finalY ?? 120;
+
+      if (pdfIncludeTotals && totalsByCurrency.length > 0) {
+        yAfterTable += 14;
+        doc.setFontSize(9);
+        doc.setTextColor(13, 148, 136);
+        doc.text("Totais por moeda (linhas visiveis):", 40, yAfterTable);
+        yAfterTable += 14;
+        doc.setTextColor(28, 25, 23);
+        for (const t of totalsByCurrency) {
+          doc.text(`${t.currency}: ${fmtAmount(t.total)}`, 40, yAfterTable);
+          yAfterTable += 12;
+        }
+      }
 
       const margin = 40;
       for (let i = 0; i < visibleRows.length; i++) {
@@ -291,6 +308,7 @@ export default function ExportarPage() {
         <p className="pin-lead mb-8 text-base">
           Seleciona o tipo de exportacao, define o periodo nas datas (podes usar do dia 1 ao ultimo dia do mes),
           remove linhas que nao queres e exporta para Excel (CSV) ou PDF (tabela com # e fotos dos recibos a seguir).
+          No PDF podes optar por incluir ou nao os totais por moeda.
         </p>
 
         <TopNav />
@@ -405,7 +423,7 @@ export default function ExportarPage() {
           {visibleRows.length > 0 ? (
             <div className="mt-6 rounded-xl border border-teal-200/60 bg-pin-teal-soft/50 px-4 py-3 dark:border-teal-800/50 dark:bg-teal-950/30">
               <p className="text-xs font-semibold uppercase tracking-wide text-pin-muted">
-                Totais por moeda (so no ecra — nao vao para o PDF)
+                Totais por moeda (ecra; opcional no PDF — ver opcao acima da lista)
               </p>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold text-pin-ink">
                 {totalsByCurrency.map((t) => (
@@ -418,7 +436,26 @@ export default function ExportarPage() {
             </div>
           ) : null}
 
+          <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200/80 bg-white/60 px-4 py-3 text-sm text-pin-ink dark:border-stone-700 dark:bg-stone-900/40">
+            <input
+              type="checkbox"
+              checked={pdfIncludeTotals}
+              onChange={(e) => setPdfIncludeTotals(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 text-pin-accent focus:ring-pin-accent"
+            />
+            <span>
+              <span className="font-semibold">Incluir totais por moeda no PDF</span>
+              <span className="mt-0.5 block text-pin-muted">
+                Se desmarcado, o PDF fica so com a tabela e as fotos (como antes).
+              </span>
+            </span>
+          </label>
+
           <div className="mt-6 overflow-hidden rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <p className="border-b border-stone-200/80 bg-pin-teal-soft/30 px-3 py-2 text-xs text-pin-muted dark:border-stone-700 dark:bg-teal-950/20">
+              Lembrete: <span className="font-semibold text-red-600 dark:text-red-400">#</span> a vermelho = sem
+              imagem de recibo.
+            </p>
             <table className="w-full text-left text-sm text-pin-ink">
               <thead className="bg-pin-teal-soft/90 text-pin-muted dark:bg-teal-950/40 dark:text-stone-400">
                 <tr>
@@ -432,9 +469,18 @@ export default function ExportarPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.map((item, idx) => (
+                {visibleRows.map((item, idx) => {
+                  const hasImage = Boolean(item.receiptImageUrl);
+                  return (
                   <tr key={item.id} className="border-t border-stone-200/80 dark:border-stone-700">
-                    <td className="px-3 py-2.5 font-bold text-pin-accent">{idx + 1}</td>
+                    <td
+                      className={`px-3 py-2.5 font-bold tabular-nums ${
+                        hasImage ? "text-pin-accent" : "text-red-600 dark:text-red-400"
+                      }`}
+                      title={hasImage ? undefined : "Sem imagem de recibo anexada"}
+                    >
+                      {idx + 1}
+                    </td>
                     <td className="px-3 py-2.5 font-medium text-pin-ink">{item.id}</td>
                     <td className="px-3 py-2.5 text-pin-muted">{item.merchant}</td>
                     <td className="px-3 py-2.5 text-pin-muted">{item.category}</td>
@@ -452,7 +498,8 @@ export default function ExportarPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {visibleRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-4 text-pin-muted">

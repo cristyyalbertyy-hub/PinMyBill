@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
 type Props = {
@@ -51,11 +52,35 @@ export function EditExpenseModal({
   const [newClientError, setNewClientError] = useState<string | null>(null);
   const [newClientSaving, setNewClientSaving] = useState(false);
 
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [removeReceipt, setRemoveReceipt] = useState(false);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const receiptCameraRef = useRef<HTMLInputElement>(null);
+  const receiptGalleryRef = useRef<HTMLInputElement>(null);
+
   const availableCategories = useMemo(() => {
     const list = categoryOptions[type] ?? [];
     if (category && !list.includes(category)) return [category, ...list];
     return list;
   }, [category, categoryOptions, type]);
+
+  useEffect(() => {
+    if (!receiptFile) {
+      setReceiptPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(receiptFile);
+    setReceiptPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [receiptFile]);
+
+  useEffect(() => {
+    if (!open || !item) return;
+    setReceiptFile(null);
+    setRemoveReceipt(false);
+    setReceiptPreviewUrl(null);
+  }, [open, item?.id]);
 
   if (!open || !item) return null;
   const currentItem = item;
@@ -90,6 +115,13 @@ export function EditExpenseModal({
     } finally {
       setNewClientSaving(false);
     }
+  }
+
+  function onReceiptFileChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const f = ev.target.files?.[0] ?? null;
+    setReceiptFile(f);
+    if (f) setRemoveReceipt(false);
+    ev.target.value = "";
   }
 
   function closeNewClientModal() {
@@ -132,6 +164,23 @@ export function EditExpenseModal({
       throw new Error("Escreve a outra moeda (ex.: BRL).");
     }
 
+    let receiptImageUrl: string | null | undefined = undefined;
+    if (removeReceipt) {
+      receiptImageUrl = null;
+    } else if (receiptFile) {
+      setReceiptUploading(true);
+      try {
+        const fd = new FormData();
+        fd.append("file", receiptFile);
+        const res = await fetch("/api/uploads", { method: "POST", body: fd });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok || !data.url) throw new Error(data.error ?? "Falha no upload da imagem.");
+        receiptImageUrl = data.url;
+      } finally {
+        setReceiptUploading(false);
+      }
+    }
+
     const updates: Record<string, unknown> = {
       type,
       amount: safeAmount,
@@ -139,6 +188,7 @@ export function EditExpenseModal({
       category: finalCategory,
       clientName: type === "cliente" ? clientName : null,
     };
+    if (receiptImageUrl !== undefined) updates.receiptImageUrl = receiptImageUrl;
 
     await onSave(currentItem.id, updates);
     onClose();
@@ -297,16 +347,99 @@ export function EditExpenseModal({
             </label>
           </div>
 
+          <div className="border-t border-stone-200/80 pt-4 dark:border-stone-700">
+            <p className="text-sm font-medium text-pin-muted">Imagem do recibo</p>
+            <p className="mt-1 text-xs text-pin-soft">
+              Podes acrescentar ou trocar a foto mais tarde; tambem podes remover.
+            </p>
+            <input
+              ref={receiptCameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={onReceiptFileChange}
+            />
+            <input
+              ref={receiptGalleryRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={onReceiptFileChange}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => receiptCameraRef.current?.click()}
+                className="pin-btn-primary min-h-10 rounded-xl px-3 py-2 text-sm"
+              >
+                Tirar foto
+              </button>
+              <button
+                type="button"
+                onClick={() => receiptGalleryRef.current?.click()}
+                className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
+              >
+                Carregar imagem
+              </button>
+              {(currentItem.receiptImageUrl || receiptFile) && !removeReceipt ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRemoveReceipt(true);
+                    setReceiptFile(null);
+                  }}
+                  className="min-h-10 rounded-xl px-3 py-2 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-50 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-950/40"
+                >
+                  Remover imagem
+                </button>
+              ) : null}
+              {removeReceipt ? (
+                <button
+                  type="button"
+                  onClick={() => setRemoveReceipt(false)}
+                  className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
+                >
+                  Anular remocao
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-3">
+              {receiptPreviewUrl ? (
+                <img
+                  src={receiptPreviewUrl}
+                  alt=""
+                  className="max-h-40 max-w-[12rem] rounded-lg object-contain ring-1 ring-stone-200 dark:ring-stone-600"
+                />
+              ) : !removeReceipt && currentItem.receiptImageUrl ? (
+                <Image
+                  src={currentItem.receiptImageUrl}
+                  alt=""
+                  width={160}
+                  height={160}
+                  className="max-h-40 w-auto rounded-lg object-contain ring-1 ring-stone-200 dark:ring-stone-600"
+                />
+              ) : (
+                <p className="text-sm text-pin-soft">Sem imagem anexada.</p>
+              )}
+            </div>
+          </div>
+
           {/* Estado nao e editavel no historico (definido aquando da confirmacao). */}
         </div>
 
         <div className="mt-5 flex gap-2">
           <button
             type="button"
-            onClick={handleSave}
-            className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm"
+            onClick={() => void handleSave()}
+            disabled={receiptUploading}
+            className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm disabled:opacity-60"
           >
-            Guardar
+            {receiptUploading ? "A enviar imagem..." : "Guardar"}
           </button>
           <button
             type="button"
