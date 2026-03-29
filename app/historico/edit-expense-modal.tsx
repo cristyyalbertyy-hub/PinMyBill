@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
 type Props = {
@@ -223,7 +224,10 @@ export function EditExpenseModal({
 
         <div className="mt-4 grid gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-            Tipo
+            <span className="inline-flex items-center gap-2">
+              Tipo
+              <ExpenseTypeCircle type={type} size="sm" />
+            </span>
             <select
               value={type}
               onChange={(e) => {
@@ -236,9 +240,9 @@ export function EditExpenseModal({
               }}
               className="pin-field pin-field-lg"
             >
-              <option value="empresa">Emp</option>
-              <option value="cliente">Cli</option>
-              <option value="pessoal">Pes</option>
+              <option value="empresa">Empresa</option>
+              <option value="pessoal">Pessoal</option>
+              <option value="cliente">Cliente</option>
             </select>
           </label>
 
@@ -265,7 +269,7 @@ export function EditExpenseModal({
                     setNewClientError(null);
                     setNewClientOpen(true);
                   }}
-                  className="pin-btn-secondary min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold touch-manipulation"
+                  className="min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition touch-manipulation hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500"
                 >
                   Novo cliente
                 </button>

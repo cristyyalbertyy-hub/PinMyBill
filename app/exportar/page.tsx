@@ -69,8 +69,6 @@ export default function ExportarPage() {
   const [hiddenRows, setHiddenRows] = useState<string[]>([]);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  /** Se true, o PDF inclui uma secao com totais por moeda apos a tabela (antes das fotos). */
-  const [pdfIncludeTotals, setPdfIncludeTotals] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
@@ -145,7 +143,6 @@ export default function ExportarPage() {
       "#",
       "Data",
       "Tipo",
-      "Cliente",
       "Categoria",
       "Comerciante",
       "Valor",
@@ -156,12 +153,10 @@ export default function ExportarPage() {
     const lines = visibleRows.map((r, idx) => {
       const type =
         r.type === "empresa" ? "Empresa" : r.type === "pessoal" ? "Pessoal" : "Cliente";
-      const client = r.type === "cliente" ? r.clientName ?? "" : "";
       return toCSVRow([
         String(idx + 1),
         r.date,
         type,
-        client,
         r.category,
         r.merchant,
         fmtAmount(r.amount),
@@ -201,7 +196,7 @@ export default function ExportarPage() {
       doc.setFontSize(12);
       doc.text(title, 40, 52);
 
-      const head = [["#", "Data", "Tipo", "Cliente", "Categoria", "Comerciante", "Valor", "Moeda"]];
+      const head = [["#", "Data", "Tipo", "Categoria", "Comerciante", "Valor", "Moeda"]];
       const body = visibleRows.map((r, idx) => {
         const type =
           r.type === "empresa" ? "Empresa" : r.type === "pessoal" ? "Pessoal" : "Cliente";
@@ -209,7 +204,6 @@ export default function ExportarPage() {
           String(idx + 1),
           r.date,
           type,
-          r.type === "cliente" ? r.clientName ?? "" : "",
           r.category,
           r.merchant,
           fmtAmount(r.amount),
@@ -234,7 +228,7 @@ export default function ExportarPage() {
       const afterTable = doc as DocWithTable;
       let yAfterTable = afterTable.lastAutoTable?.finalY ?? 120;
 
-      if (pdfIncludeTotals && totalsByCurrency.length > 0) {
+      if (totalsByCurrency.length > 0) {
         yAfterTable += 14;
         doc.setFontSize(9);
         doc.setTextColor(13, 148, 136);
@@ -304,37 +298,11 @@ export default function ExportarPage() {
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Exportacao</h1>
-        <p className="pin-lead mb-8 text-base">
-          Seleciona o tipo de exportacao, define o periodo nas datas (podes usar do dia 1 ao ultimo dia do mes),
-          remove linhas que nao queres e exporta para Excel (CSV) ou PDF (tabela com # e fotos dos recibos a seguir).
-          No PDF podes optar por incluir ou nao os totais por moeda.
-        </p>
+        <h1 className="mb-6 text-3xl font-extrabold tracking-tight text-pin-ink md:mb-8 md:text-4xl">
+          Exportacao
+        </h1>
 
         <TopNav />
-
-        {dbHealth ? (
-          <div className="mt-4 flex justify-end">
-            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
-              <span aria-hidden>●</span>
-              <span>DB:</span>
-              <strong className="text-pin-ink">
-                {dbHealth.db?.provider === "neon"
-                  ? "Neon"
-                  : dbHealth.db?.provider === "local"
-                    ? "localhost"
-                    : dbHealth.db?.provider === "missing"
-                      ? "em falta"
-                      : "remota"}
-              </strong>
-              {dbHealth.db?.host ? (
-                <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
-                  {dbHealth.db.host}
-                </span>
-              ) : null}
-            </p>
-          </div>
-        ) : null}
 
         {loadError ? (
           <p className="mt-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
@@ -391,8 +359,8 @@ export default function ExportarPage() {
             {mode === "periodo-empresa" ||
             mode === "periodo-pessoal" ||
             mode === "cliente-periodo" ? (
-              <>
-                <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
+              <div className="col-span-full grid grid-cols-2 gap-3 sm:gap-4">
+                <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-pin-muted">
                   Data inicial
                   <input
                     type="date"
@@ -401,10 +369,10 @@ export default function ExportarPage() {
                       setHiddenRows([]);
                       setStartDate(event.target.value);
                     }}
-                    className="pin-field"
+                    className="pin-field min-w-0"
                   />
                 </label>
-                <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
+                <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-pin-muted">
                   Data final
                   <input
                     type="date"
@@ -413,17 +381,17 @@ export default function ExportarPage() {
                       setHiddenRows([]);
                       setEndDate(event.target.value);
                     }}
-                    className="pin-field"
+                    className="pin-field min-w-0"
                   />
                 </label>
-              </>
+              </div>
             ) : null}
           </div>
 
           {visibleRows.length > 0 ? (
             <div className="mt-6 rounded-xl border border-teal-200/60 bg-pin-teal-soft/50 px-4 py-3 dark:border-teal-800/50 dark:bg-teal-950/30">
               <p className="text-xs font-semibold uppercase tracking-wide text-pin-muted">
-                Totais por moeda (ecra; opcional no PDF — ver opcao acima da lista)
+                Totais por moeda (ecra e PDF)
               </p>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold text-pin-ink">
                 {totalsByCurrency.map((t) => (
@@ -436,20 +404,27 @@ export default function ExportarPage() {
             </div>
           ) : null}
 
-          <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200/80 bg-white/60 px-4 py-3 text-sm text-pin-ink dark:border-stone-700 dark:bg-stone-900/40">
-            <input
-              type="checkbox"
-              checked={pdfIncludeTotals}
-              onChange={(e) => setPdfIncludeTotals(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 text-pin-accent focus:ring-pin-accent"
-            />
-            <span>
-              <span className="font-semibold">Incluir totais por moeda no PDF</span>
-              <span className="mt-0.5 block text-pin-muted">
-                Se desmarcado, o PDF fica so com a tabela e as fotos (como antes).
-              </span>
-            </span>
-          </label>
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={downloadCSV}
+              className="pin-btn-secondary min-h-11 rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
+              disabled={visibleRows.length === 0}
+            >
+              Baixar CSV (Excel)
+            </button>
+            <button
+              type="button"
+              onClick={() => void generatePDF()}
+              className="min-h-11 rounded-full border border-teal-700/25 bg-gradient-to-b from-white to-teal-50/90 px-5 py-2.5 text-sm font-semibold text-teal-900 shadow-sm ring-1 ring-teal-900/5 transition hover:border-teal-700/40 hover:to-teal-100/95 active:scale-[0.99] disabled:opacity-50 dark:border-teal-500/30 dark:from-stone-900 dark:to-teal-950/50 dark:text-teal-100 dark:ring-teal-400/10 dark:hover:border-teal-400/45 dark:hover:to-teal-900/40"
+              disabled={visibleRows.length === 0 || pdfGenerating}
+            >
+              {pdfGenerating ? "A gerar PDF..." : "Gerar PDF (tabela + totais + fotos)"}
+            </button>
+          </div>
+          {pdfError ? (
+            <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{pdfError}</p>
+          ) : null}
 
           <div className="mt-6 overflow-hidden rounded-xl border border-stone-200/80 dark:border-stone-700">
             <p className="border-b border-stone-200/80 bg-pin-teal-soft/30 px-3 py-2 text-xs text-pin-muted dark:border-stone-700 dark:bg-teal-950/20">
@@ -461,9 +436,9 @@ export default function ExportarPage() {
                 <tr>
                   <th className="px-3 py-2.5 font-semibold">#</th>
                   <th className="px-3 py-2.5 font-semibold">ID</th>
+                  <th className="px-3 py-2.5 font-semibold">Data</th>
                   <th className="px-3 py-2.5 font-semibold">Comerciante</th>
                   <th className="px-3 py-2.5 font-semibold">Categoria</th>
-                  <th className="px-3 py-2.5 font-semibold">Cliente</th>
                   <th className="px-3 py-2.5 font-semibold">Valor</th>
                   <th className="px-3 py-2.5 font-semibold">Acao</th>
                 </tr>
@@ -472,7 +447,10 @@ export default function ExportarPage() {
                 {visibleRows.map((item, idx) => {
                   const hasImage = Boolean(item.receiptImageUrl);
                   return (
-                  <tr key={item.id} className="border-t border-stone-200/80 dark:border-stone-700">
+                  <tr
+                    key={item.id}
+                    className="border-t border-stone-200/80 transition-colors duration-150 hover:bg-pin-teal-soft/50 dark:border-stone-700 dark:hover:bg-teal-950/25"
+                  >
                     <td
                       className={`px-3 py-2.5 font-bold tabular-nums ${
                         hasImage ? "text-pin-accent" : "text-red-600 dark:text-red-400"
@@ -482,9 +460,9 @@ export default function ExportarPage() {
                       {idx + 1}
                     </td>
                     <td className="px-3 py-2.5 font-medium text-pin-ink">{item.id}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-pin-muted">{item.date}</td>
                     <td className="px-3 py-2.5 text-pin-muted">{item.merchant}</td>
                     <td className="px-3 py-2.5 text-pin-muted">{item.category}</td>
-                    <td className="px-3 py-2.5 text-pin-muted">{item.type === "cliente" ? item.clientName ?? "" : ""}</td>
                     <td className="px-3 py-2.5 font-semibold text-pin-accent">
                       {item.currency} {item.amount}
                     </td>
@@ -492,9 +470,11 @@ export default function ExportarPage() {
                       <button
                         type="button"
                         onClick={() => removeRow(item.id)}
-                        className="rounded-lg bg-red-50 px-2 py-1.5 text-xs font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-200"
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg bg-red-50 text-base font-bold leading-none text-red-700 shadow-sm ring-1 ring-red-200/90 transition-all duration-150 hover:bg-red-100 hover:shadow active:scale-95 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800/60"
+                        aria-label="Remover linha"
+                        title="Remover linha"
                       >
-                        Remover linha
+                        ×
                       </button>
                     </td>
                   </tr>
@@ -510,28 +490,6 @@ export default function ExportarPage() {
               </tbody>
             </table>
           </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={downloadCSV}
-              className="pin-btn-secondary min-h-11 rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
-              disabled={visibleRows.length === 0}
-            >
-              Baixar CSV (Excel)
-            </button>
-            <button
-              type="button"
-              onClick={() => void generatePDF()}
-              className="pin-btn-primary min-h-11 rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
-              disabled={visibleRows.length === 0 || pdfGenerating}
-            >
-              {pdfGenerating ? "A gerar PDF..." : "Gerar PDF (tabela + fotos)"}
-            </button>
-          </div>
-          {pdfError ? (
-            <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{pdfError}</p>
-          ) : null}
         </section>
       </div>
     </main>

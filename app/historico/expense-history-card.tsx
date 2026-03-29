@@ -1,22 +1,25 @@
 "use client";
 
 import Image from "next/image";
+import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import type { ExpenseItem } from "@/lib/mock-data";
+
+const BORDER_BY_TYPE: Record<ExpenseItem["type"], string> = {
+  empresa: "border-l-indigo-500 dark:border-l-indigo-400",
+  pessoal: "border-l-teal-500 dark:border-l-teal-400",
+  cliente: "border-l-amber-500 dark:border-l-amber-400",
+};
 
 type Props = {
   item: ExpenseItem;
   onModify: () => void;
 };
 
-function typeLabel(type: ExpenseItem["type"]) {
-  if (type === "empresa") return "Emp";
-  if (type === "cliente") return "Cli";
-  return "Pes";
-}
-
 export function ExpenseHistoryCard({ item, onModify }: Props) {
   return (
-    <article className="pin-card relative overflow-hidden border-l-4 border-l-pin-accent p-4 pl-4">
+    <article
+      className={`pin-card pin-card-hover relative overflow-hidden border-l-4 p-4 pl-4 ${BORDER_BY_TYPE[item.type]}`}
+    >
       <button
         type="button"
         onClick={onModify}
@@ -55,7 +58,7 @@ export function ExpenseHistoryCard({ item, onModify }: Props) {
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between gap-3 text-sm">
           <span className="text-pin-muted">Tipo</span>
-          <span className="font-semibold text-pin-ink">{typeLabel(item.type)}</span>
+          <ExpenseTypeCircle type={item.type} />
         </div>
 
         {item.type === "cliente" ? (

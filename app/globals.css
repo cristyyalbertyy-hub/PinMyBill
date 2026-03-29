@@ -78,16 +78,42 @@ body.pin-app {
   background: var(--pin-card);
   backdrop-filter: blur(10px);
   box-shadow:
-    0 2px 4px rgb(28 25 23 / 0.04),
-    0 12px 32px -8px rgb(13 148 136 / 0.12),
-    0 1px 0 rgb(255 255 255 / 0.6) inset;
+    0 2px 6px rgb(28 25 23 / 0.05),
+    0 14px 36px -10px rgb(13 148 136 / 0.14),
+    0 1px 0 rgb(255 255 255 / 0.65) inset;
 }
 
 @media (prefers-color-scheme: dark) {
   .pin-card {
     box-shadow:
-      0 2px 8px rgb(0 0 0 / 0.35),
-      0 0 0 1px rgb(68 64 60 / 0.5) inset;
+      0 3px 12px rgb(0 0 0 / 0.38),
+      0 0 0 1px rgb(68 64 60 / 0.45) inset,
+      0 1px 0 rgb(255 255 255 / 0.04) inset;
+  }
+}
+
+/** Cartões clicáveis / listas — elevação ao hover */
+.pin-card-hover {
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+}
+
+.pin-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 16px rgb(28 25 23 / 0.07),
+    0 18px 40px -12px rgb(13 148 136 / 0.18),
+    0 1px 0 rgb(255 255 255 / 0.65) inset;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pin-card-hover:hover {
+    box-shadow:
+      0 8px 24px rgb(0 0 0 / 0.45),
+      0 0 0 1px rgb(45 212 191 / 0.12),
+      0 1px 0 rgb(255 255 255 / 0.05) inset;
   }
 }
 
@@ -121,7 +147,11 @@ body.pin-app {
   background: rgb(255 255 255 / 0.85);
   padding: 0.5rem 0.625rem;
   color: var(--pin-ink);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.pin-field:hover:not(:focus):not(:disabled) {
+  border-color: rgb(180 175 170);
 }
 
 .pin-field:focus {
@@ -139,6 +169,10 @@ body.pin-app {
   .pin-field:focus {
     box-shadow: 0 0 0 3px rgb(45 212 191 / 0.2);
   }
+
+  .pin-field:hover:not(:focus):not(:disabled) {
+    border-color: rgb(120 113 108);
+  }
 }
 
 .pin-field-lg {
@@ -152,12 +186,17 @@ body.pin-app {
   background: linear-gradient(165deg, var(--pin-accent) 0%, var(--pin-accent-hover) 100%);
   color: white;
   font-weight: 600;
-  transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
-  box-shadow: 0 2px 8px -2px rgb(13 148 136 / 0.45);
+  transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease, box-shadow 0.18s ease;
+  box-shadow:
+    0 2px 8px -2px rgb(13 148 136 / 0.45),
+    0 1px 0 rgb(255 255 255 / 0.2) inset;
 }
 
 .pin-btn-primary:hover:not(:disabled) {
   filter: brightness(1.06);
+  box-shadow:
+    0 6px 16px -4px rgb(13 148 136 / 0.5),
+    0 1px 0 rgb(255 255 255 / 0.22) inset;
 }
 
 .pin-btn-primary:active:not(:disabled) {
@@ -174,23 +213,35 @@ body.pin-app {
   color: var(--pin-ink);
   font-weight: 600;
   border: 1px solid var(--pin-ring);
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease,
+    border-color 0.15s ease;
+  box-shadow: 0 1px 3px rgb(28 25 23 / 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
   .pin-btn-secondary {
     background: rgb(41 37 36 / 0.9);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
   }
 }
 
-.pin-btn-secondary:hover {
+.pin-btn-secondary:hover:not(:disabled) {
   background: rgb(231 229 228 / 0.95);
+  box-shadow: 0 3px 10px rgb(28 25 23 / 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
-  .pin-btn-secondary:hover {
+  .pin-btn-secondary:hover:not(:disabled) {
     background: rgb(68 64 60 / 0.95);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
   }
+}
+
+.pin-btn-secondary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 /* Dashboard: ilustracao e entrada suave */
@@ -311,8 +362,8 @@ body.pin-app {
 .pin-dash-shortcut:hover {
   transform: translateY(-3px);
   box-shadow:
-    0 8px 24px -6px rgb(13 148 136 / 0.22),
-    0 2px 8px -2px rgb(28 25 23 / 0.06);
+    0 10px 28px -8px rgb(13 148 136 / 0.26),
+    0 4px 12px -4px rgb(28 25 23 / 0.08);
 }
 
 .pin-dash-shortcut:active {
@@ -336,6 +387,10 @@ body.pin-app {
   }
 
   .pin-dash-shortcut:hover {
+    transform: none;
+  }
+
+  .pin-card-hover:hover {
     transform: none;
   }
 }

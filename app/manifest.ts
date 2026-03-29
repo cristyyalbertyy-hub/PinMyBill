@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "PinMyBill",
+    name: "PinMyBill (Beta)",
     short_name: "PinMyBill",
-    description: "Gestao inteligente de recibos pessoais e de empresa",
+    description: "Gestao inteligente de recibos pessoais e de empresa — versao Beta.",
     start_url: "/",
     scope: "/",
     display: "standalone",

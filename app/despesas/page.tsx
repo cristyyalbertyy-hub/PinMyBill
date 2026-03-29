@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Cropper, { type Area } from "react-easy-crop";
+import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { TopNav } from "@/components/top-nav";
 import type { CurrencyCode, ExpenseType } from "@/lib/mock-data";
 
@@ -82,7 +83,7 @@ function DespesasPageContent() {
   const [uploadType, setUploadType] = useState<ExpenseType>("empresa");
   const [uploadCategory, setUploadCategory] = useState("");
   const [uploadOtherCategoryName, setUploadOtherCategoryName] = useState("");
-  const [uploadAmount, setUploadAmount] = useState("0");
+  const [uploadAmount, setUploadAmount] = useState("");
   const [uploadCurrency, setUploadCurrency] = useState<CurrencyCode>("AED");
   const [uploadOtherCurrency, setUploadOtherCurrency] = useState("");
   const [uploadClient, setUploadClient] = useState("");
@@ -344,6 +345,12 @@ function DespesasPageContent() {
       return;
     }
 
+    const amountParsed = Number.parseFloat(uploadAmount.trim().replace(",", "."));
+    if (!Number.isFinite(amountParsed) || amountParsed <= 0) {
+      setUploadError("Indica o valor (maior que zero).");
+      return;
+    }
+
     closeNewClientModal();
 
     setUploading(true);
@@ -396,7 +403,7 @@ function DespesasPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           merchant,
-          amount: Number(uploadAmount) || 0,
+          amount: amountParsed,
           currency:
             uploadCurrency === OTHER_CURRENCY_SENTINEL
               ? uploadOtherCurrency.trim().toUpperCase()
@@ -413,7 +420,7 @@ function DespesasPageContent() {
       await createRes.json();
       setUploadFile(null);
       setUploadMerchant("");
-      setUploadAmount("0");
+      setUploadAmount("");
       setUploadCurrency("AED");
       setUploadOtherCurrency("");
     } catch (error) {
@@ -610,7 +617,10 @@ function DespesasPageContent() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Tipo
+              <span className="inline-flex items-center gap-2">
+                Tipo
+                <ExpenseTypeCircle type={uploadType} size="sm" />
+              </span>
               <select
                 value={uploadType}
                 onChange={(event) => {
@@ -649,7 +659,7 @@ function DespesasPageContent() {
                       setNewClientError(null);
                       setNewClientOpen(true);
                     }}
-                    className="pin-btn-secondary min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold touch-manipulation"
+                    className="min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition touch-manipulation hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500"
                   >
                     Novo cliente
                   </button>

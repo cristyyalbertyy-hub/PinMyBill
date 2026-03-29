@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { ExpenseTypeCircle, ExpenseTypeLegend } from "@/components/expense-type-circle";
 import { TopNav } from "@/components/top-nav";
 import type { ExpenseItem, ExpenseType } from "@/lib/mock-data";
 import { ExpenseHistoryCard } from "./expense-history-card";
@@ -21,12 +22,6 @@ type DbHealth = {
     provider: "missing" | "local" | "neon" | "remote";
   };
 };
-
-function typeLabel(type: ExpenseType) {
-  if (type === "empresa") return "Emp";
-  if (type === "cliente") return "Cli";
-  return "Pes";
-}
 
 export default function HistoricoPage() {
   const [items, setItems] = useState<ExpenseItem[]>([]);
@@ -174,34 +169,13 @@ export default function HistoricoPage() {
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Historico</h1>
-        <p className="pin-lead mb-8 text-base">
+        <p className="pin-lead mb-4 text-base">
           Lista de recibos guardados. Para alterar, usa o botao &quot;Modificar&quot;.
         </p>
 
-        <TopNav />
+        <ExpenseTypeLegend className="mb-8" />
 
-        {dbHealth ? (
-          <div className="mt-4 flex justify-end">
-            <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
-              <span aria-hidden>●</span>
-              <span>DB:</span>
-              <strong className="text-pin-ink">
-                {dbHealth.db?.provider === "neon"
-                  ? "Neon"
-                  : dbHealth.db?.provider === "local"
-                    ? "localhost"
-                    : dbHealth.db?.provider === "missing"
-                      ? "em falta"
-                      : "remota"}
-              </strong>
-              {dbHealth.db?.host ? (
-                <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
-                  {dbHealth.db.host}
-                </span>
-              ) : null}
-            </p>
-          </div>
-        ) : null}
+        <TopNav />
 
         {loadError ? (
           <p className="mb-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
@@ -251,7 +225,10 @@ export default function HistoricoPage() {
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-t border-stone-200/80 dark:border-stone-700/80">
+                    <tr
+                      key={item.id}
+                      className="border-t border-stone-200/80 transition-colors duration-150 hover:bg-pin-teal-soft/55 dark:border-stone-700/80 dark:hover:bg-teal-950/30"
+                    >
                       <td className="px-4 py-3 font-semibold text-pin-ink">{item.id}</td>
                       <td className="px-4 py-3">
                         {item.receiptImageUrl ? (
@@ -268,7 +245,9 @@ export default function HistoricoPage() {
                       </td>
                       <td className="px-4 py-3 text-pin-muted">{item.merchant}</td>
                       <td className="px-4 py-3 text-pin-muted">{item.date}</td>
-                      <td className="px-4 py-3 text-pin-muted">{typeLabel(item.type)}</td>
+                      <td className="px-4 py-3">
+                        <ExpenseTypeCircle type={item.type} />
+                      </td>
                       <td className="px-4 py-3 text-pin-muted">
                         {item.type === "cliente" ? item.category : item.category}
                       </td>

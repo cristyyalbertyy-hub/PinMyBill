@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { InstructionsFrame } from "@/components/instructions-frame";
 import "./globals.css";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -15,12 +16,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PinMyBill",
-  description: "Gestao inteligente de recibos pessoais e de empresa",
-  applicationName: "PinMyBill",
+  title: {
+    default: "PinMyBill · Beta",
+    template: "%s · PinMyBill Beta",
+  },
+  description: "Gestao inteligente de recibos pessoais e de empresa (versao Beta).",
+  applicationName: "PinMyBill Beta",
   appleWebApp: {
     capable: true,
-    title: "PinMyBill",
+    title: "PinMyBill Beta",
     statusBarStyle: "black-translucent",
   },
   formatDetection: {
@@ -53,7 +57,7 @@ export default function RootLayout({
       className={`${jakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="pin-app min-h-full flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-        {children}
+        <InstructionsFrame>{children}</InstructionsFrame>
         <MobileNav />
       </body>
     </html>
