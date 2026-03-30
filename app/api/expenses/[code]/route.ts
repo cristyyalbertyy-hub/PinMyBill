@@ -52,3 +52,14 @@ export async function PATCH(request: Request, context: Params) {
     return NextResponse.json({ error: "Falha ao atualizar despesa." }, { status: 500 });
   }
 }
+
+export async function DELETE(_request: Request, context: Params) {
+  try {
+    const { code } = await context.params;
+    const decoded = decodeURIComponent(code);
+    await prisma.expense.delete({ where: { code: decoded } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Falha ao remover despesa." }, { status: 500 });
+  }
+}

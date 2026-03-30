@@ -37,6 +37,7 @@ export function EditExpenseModal({
   const [category, setCategory] = useState<string>(() => item?.category ?? "");
   const [otherCategoryName, setOtherCategoryName] = useState("");
   const [amount, setAmount] = useState<string>(() => String(item?.amount ?? 0));
+  const [expenseDate, setExpenseDate] = useState<string>(() => item?.date?.slice(0, 10) ?? "");
   const [currency, setCurrency] = useState<CurrencyCode>(() => {
     const current = (item?.currency ?? "AED").toUpperCase();
     if (currencyOptions.includes(current)) return current;
@@ -165,6 +166,10 @@ export function EditExpenseModal({
       throw new Error("Escreve a outra moeda (ex.: BRL).");
     }
 
+    if (!expenseDate.trim()) {
+      throw new Error("Indica a data do recibo.");
+    }
+
     let receiptImageUrl: string | null | undefined = undefined;
     if (removeReceipt) {
       receiptImageUrl = null;
@@ -188,6 +193,7 @@ export function EditExpenseModal({
       currency: currency === OTHER_CURRENCY_SENTINEL ? otherCurrency.trim().toUpperCase() : currency,
       category: finalCategory,
       clientName: type === "cliente" ? clientName : null,
+      date: expenseDate,
     };
     if (receiptImageUrl !== undefined) updates.receiptImageUrl = receiptImageUrl;
 
@@ -276,6 +282,17 @@ export function EditExpenseModal({
               </div>
             </div>
           ) : null}
+
+          <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+            Data do recibo
+            <input
+              type="date"
+              value={expenseDate}
+              onChange={(e) => setExpenseDate(e.target.value)}
+              className="pin-field pin-field-lg"
+              max="2099-12-31"
+            />
+          </label>
 
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
             Categoria
@@ -432,8 +449,6 @@ export function EditExpenseModal({
               )}
             </div>
           </div>
-
-          {/* Estado nao e editavel no historico (definido aquando da confirmacao). */}
         </div>
 
         <div className="mt-5 flex gap-2">

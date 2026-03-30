@@ -8,6 +8,7 @@ const links = [
   { href: "/despesas", label: "Entrada" },
   { href: "/historico", label: "Historico" },
   { href: "/exportar", label: "Exportar PDF" },
+  { href: "/categorias", label: "Categorias" },
 ];
 
 export function TopNav() {

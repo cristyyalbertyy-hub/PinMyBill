@@ -8,6 +8,7 @@ const links = [
   { href: "/despesas", label: "Recibos", icon: "📷" },
   { href: "/historico", label: "Historico", icon: "🗂️" },
   { href: "/exportar", label: "PDF", icon: "📄" },
+  { href: "/categorias", label: "Categorias", icon: "🏷️" },
 ] as const;
 
 export function MobileNav() {

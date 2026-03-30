@@ -54,12 +54,24 @@ export default function CategoriasPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: clean }),
     });
-    if (res.ok) await loadAll();
+    if (res.ok) {
+      await loadAll();
+      return;
+    }
+
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    globalThis.alert(data?.error ?? "Falha ao atualizar categoria.");
   }
 
   async function deleteCategory(id: string) {
     const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-    if (res.ok) await loadAll();
+    if (res.ok) {
+      await loadAll();
+      return;
+    }
+
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    globalThis.alert(data?.error ?? "Falha ao apagar categoria.");
   }
 
   async function addCategory(scope: keyof GroupedCategories, name: string, reset: () => void) {
@@ -147,7 +159,7 @@ export default function CategoriasPage() {
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             placeholder={placeholder}
-            className="pin-field"
+            className="pin-field pin-field-orange-focus"
           />
           <button
             type="button"

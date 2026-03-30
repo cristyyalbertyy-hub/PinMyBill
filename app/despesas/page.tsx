@@ -89,6 +89,13 @@ function DespesasPageContent() {
   const [uploadClient, setUploadClient] = useState("");
   /** Sem imagem e obrigatorio; com imagem e opcional (cai no nome do ficheiro). */
   const [uploadMerchant, setUploadMerchant] = useState("");
+  const [uploadDate, setUploadDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
@@ -351,6 +358,11 @@ function DespesasPageContent() {
       return;
     }
 
+    if (!uploadDate.trim()) {
+      setUploadError("Indica a data do recibo.");
+      return;
+    }
+
     closeNewClientModal();
 
     setUploading(true);
@@ -408,6 +420,7 @@ function DespesasPageContent() {
             uploadCurrency === OTHER_CURRENCY_SENTINEL
               ? uploadOtherCurrency.trim().toUpperCase()
               : uploadCurrency,
+          date: uploadDate,
           type: uploadType,
           category: cat,
           clientName: uploadType === "cliente" ? uploadClient : null,
@@ -423,6 +436,13 @@ function DespesasPageContent() {
       setUploadAmount("");
       setUploadCurrency("AED");
       setUploadOtherCurrency("");
+      {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        setUploadDate(`${y}-${m}-${day}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao enviar recibo.";
       setUploadError(message);
@@ -602,12 +622,22 @@ function DespesasPageContent() {
                 </p>
               )}
             </div>
-            <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-3">
+            <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+              Data do recibo
+              <input
+                type="date"
+                value={uploadDate}
+                onChange={(event) => setUploadDate(event.target.value)}
+                className="pin-field"
+                max="2099-12-31"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-2">
               Comerciante ou descricao
               <input
                 value={uploadMerchant}
                 onChange={(event) => setUploadMerchant(event.target.value)}
-                className="pin-field"
+                className="pin-field pin-field-orange-focus"
                 placeholder={
                   uploadFile
                     ? "Opcional se tiveres imagem (usa o nome do ficheiro se vazio)"
@@ -659,7 +689,7 @@ function DespesasPageContent() {
                       setNewClientError(null);
                       setNewClientOpen(true);
                     }}
-                    className="min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition touch-manipulation hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500"
+                    className="pin-btn-primary min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold touch-manipulation active:scale-[0.98]"
                   >
                     Novo cliente
                   </button>
@@ -738,11 +768,11 @@ function DespesasPageContent() {
                 />
               </label>
             ) : null}
-            <div className="flex items-end">
+            <div className="flex items-end justify-end md:col-span-3">
               <button
                 type="submit"
                 disabled={uploading}
-                className="pin-btn-primary min-h-12 w-full touch-manipulation rounded-full px-6 py-3 text-base md:w-auto md:py-2.5 md:text-sm"
+                className="min-h-12 touch-manipulation rounded-full px-6 py-3 text-base text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500 md:py-2.5 md:text-sm w-auto"
               >
                 {uploading ? "A enviar..." : "Guardar recibo"}
               </button>

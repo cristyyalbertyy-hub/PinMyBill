@@ -13,20 +13,32 @@ const BORDER_BY_TYPE: Record<ExpenseItem["type"], string> = {
 type Props = {
   item: ExpenseItem;
   onModify: () => void;
+  onDelete: () => void;
 };
 
-export function ExpenseHistoryCard({ item, onModify }: Props) {
+export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
   return (
     <article
       className={`pin-card pin-card-hover relative overflow-hidden border-l-4 p-4 pl-4 ${BORDER_BY_TYPE[item.type]}`}
     >
-      <button
-        type="button"
-        onClick={onModify}
-        className="pin-btn-secondary absolute right-3 top-3 min-h-10 rounded-xl px-3 py-2 text-sm active:scale-[0.98]"
-      >
-        Modificar
-      </button>
+      <div className="absolute right-3 top-3 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onModify}
+          className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm active:scale-[0.98]"
+        >
+          Modificar
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold leading-none text-red-600 ring-1 ring-red-200/90 transition hover:bg-red-50 active:scale-[0.98] dark:text-red-400 dark:ring-red-900/80 dark:hover:bg-red-950/50"
+          aria-label="Remover recibo"
+          title="Remover"
+        >
+          ×
+        </button>
+      </div>
 
       <div className="flex gap-3 pt-2">
         <div className="shrink-0">
@@ -45,7 +57,7 @@ export function ExpenseHistoryCard({ item, onModify }: Props) {
           )}
         </div>
 
-        <div className="min-w-0 flex-1 pr-20">
+        <div className="min-w-0 flex-1 pr-[10.5rem]">
           <div className="flex items-start justify-between gap-2">
             <p className="truncate font-bold text-pin-ink">{item.merchant}</p>
           </div>

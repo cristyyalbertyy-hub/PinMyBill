@@ -161,6 +161,22 @@ export default function HistoricoPage() {
     setItems((prev) => prev.map((i) => (i.id === code ? { ...i, ...data } : i)));
   }, []);
 
+  const deleteExpense = useCallback(async (code: string) => {
+    if (!globalThis.confirm("Remover este recibo? Esta accao nao pode ser anulada.")) return;
+    try {
+      const res = await fetch(`/api/expenses/${encodeURIComponent(code)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        globalThis.alert(data.error ?? "Nao foi possivel remover.");
+        return;
+      }
+      setItems((prev) => prev.filter((i) => i.id !== code));
+      setEditingCode((prev) => (prev === code ? null : prev));
+    } catch {
+      globalThis.alert("Erro ao remover.");
+    }
+  }, []);
+
   async function handleSave(code: string, updates: Record<string, unknown>) {
     await patchExpense(code, updates);
   }
@@ -169,9 +185,6 @@ export default function HistoricoPage() {
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Historico</h1>
-        <p className="pin-lead mb-4 text-base">
-          Lista de recibos guardados. Para alterar, usa o botao &quot;Modificar&quot;.
-        </p>
 
         <ExpenseTypeLegend className="mb-8" />
 
@@ -204,6 +217,7 @@ export default function HistoricoPage() {
                     key={item.id}
                     item={item}
                     onModify={() => setEditingCode(item.id)}
+                    onDelete={() => void deleteExpense(item.id)}
                   />
                 ))
               )}
@@ -255,13 +269,24 @@ export default function HistoricoPage() {
                         {item.currency} {item.amount}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditingCode(item.id)}
-                          className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
-                        >
-                          Modificar
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingCode(item.id)}
+                            className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
+                          >
+                            Modificar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteExpense(item.id)}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-red-600 ring-1 ring-red-200/90 hover:bg-red-50 dark:text-red-400 dark:ring-red-900/80 dark:hover:bg-red-950/50"
+                            aria-label="Remover recibo"
+                            title="Remover"
+                          >
+                            ×
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
