@@ -156,7 +156,10 @@ export default function HistoricoPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(data?.error ?? "Nao foi possivel guardar as alteracoes.");
+    }
     const data = (await res.json()) as ExpenseItem;
     setItems((prev) => prev.map((i) => (i.id === code ? { ...i, ...data } : i)));
   }, []);

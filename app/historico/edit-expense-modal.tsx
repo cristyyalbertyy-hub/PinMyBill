@@ -58,6 +58,8 @@ export function EditExpenseModal({
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [removeReceipt, setRemoveReceipt] = useState(false);
   const [receiptUploading, setReceiptUploading] = useState(false);
+  const [savePending, setSavePending] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const receiptCameraRef = useRef<HTMLInputElement>(null);
   const receiptGalleryRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +84,8 @@ export function EditExpenseModal({
     setReceiptFile(null);
     setRemoveReceipt(false);
     setReceiptPreviewUrl(null);
+    setSavePending(false);
+    setSaveError(null);
   }, [open, item?.id]);
 
   if (!open || !item) return null;
@@ -135,75 +139,83 @@ export function EditExpenseModal({
 
   async function handleSave() {
     closeNewClientModal();
+    setSavePending(true);
+    setSaveError(null);
 
-    const parsed = Number(amount);
-    const safeAmount = Number.isNaN(parsed) ? 0 : parsed;
+    try {
+      const parsed = Number(amount);
+      const safeAmount = Number.isNaN(parsed) ? 0 : parsed;
 
-    let finalCategory = category;
-    if (category === OTHER_CATEGORY_SENTINEL) {
-      const other = otherCategoryName.trim();
-      if (!other) throw new Error("Escreve o nome da categoria 'Outra'.");
+      let finalCategory = category;
+      if (category === OTHER_CATEGORY_SENTINEL) {
+        const other = otherCategoryName.trim();
+        if (!other) throw new Error("Escreve o nome da categoria 'Outra'.");
 
-      const createCatRes = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: type, name: other }),
-      });
+        const createCatRes = await fetch("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scope: type, name: other }),
+        });
 
-      if (!createCatRes.ok) {
-        throw new Error("Falha ao criar a categoria 'Outra' (pode ser duplicada).");
+        if (!createCatRes.ok) {
+          throw new Error("Falha ao criar a categoria 'Outra' (pode ser duplicada).");
+        }
+
+        const createdCat = (await createCatRes.json()) as { name: string };
+        finalCategory = createdCat.name;
+        setCategory(createdCat.name);
+        setOtherCategoryName("");
+
+        if (onCategoryCreated) await onCategoryCreated();
       }
 
-      const createdCat = (await createCatRes.json()) as { name: string };
-      finalCategory = createdCat.name;
-      setCategory(createdCat.name);
-      setOtherCategoryName("");
-
-      if (onCategoryCreated) await onCategoryCreated();
-    }
-
-    if (currency === OTHER_CURRENCY_SENTINEL && !otherCurrency.trim()) {
-      throw new Error("Escreve a outra moeda (ex.: BRL).");
-    }
-
-    if (!expenseDate.trim()) {
-      throw new Error("Indica a data do recibo.");
-    }
-
-    let receiptImageUrl: string | null | undefined = undefined;
-    if (removeReceipt) {
-      receiptImageUrl = null;
-    } else if (receiptFile) {
-      setReceiptUploading(true);
-      try {
-        const fd = new FormData();
-        fd.append("file", receiptFile);
-        const res = await fetch("/api/uploads", { method: "POST", body: fd });
-        const data = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !data.url) throw new Error(data.error ?? "Falha no upload da imagem.");
-        receiptImageUrl = data.url;
-      } finally {
-        setReceiptUploading(false);
+      if (currency === OTHER_CURRENCY_SENTINEL && !otherCurrency.trim()) {
+        throw new Error("Escreve a outra moeda (ex.: BRL).");
       }
+
+      if (!expenseDate.trim()) {
+        throw new Error("Indica a data do recibo.");
+      }
+
+      let receiptImageUrl: string | null | undefined = undefined;
+      if (removeReceipt) {
+        receiptImageUrl = null;
+      } else if (receiptFile) {
+        setReceiptUploading(true);
+        try {
+          const fd = new FormData();
+          fd.append("file", receiptFile);
+          const res = await fetch("/api/uploads", { method: "POST", body: fd });
+          const data = (await res.json()) as { url?: string; error?: string };
+          if (!res.ok || !data.url) throw new Error(data.error ?? "Falha no upload da imagem.");
+          receiptImageUrl = data.url;
+        } finally {
+          setReceiptUploading(false);
+        }
+      }
+
+      const updates: Record<string, unknown> = {
+        type,
+        amount: safeAmount,
+        currency: currency === OTHER_CURRENCY_SENTINEL ? otherCurrency.trim().toUpperCase() : currency,
+        category: finalCategory,
+        clientName: type === "cliente" ? clientName : null,
+        date: expenseDate,
+      };
+      if (receiptImageUrl !== undefined) updates.receiptImageUrl = receiptImageUrl;
+
+      await onSave(currentItem.id, updates);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Falha ao guardar alteracoes.");
+    } finally {
+      setSavePending(false);
     }
-
-    const updates: Record<string, unknown> = {
-      type,
-      amount: safeAmount,
-      currency: currency === OTHER_CURRENCY_SENTINEL ? otherCurrency.trim().toUpperCase() : currency,
-      category: finalCategory,
-      clientName: type === "cliente" ? clientName : null,
-      date: expenseDate,
-    };
-    if (receiptImageUrl !== undefined) updates.receiptImageUrl = receiptImageUrl;
-
-    await onSave(currentItem.id, updates);
-    onClose();
   }
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-stone-900/45 backdrop-blur-[2px] md:items-center"
+      className="fixed inset-0 z-[60] flex items-end justify-center overflow-y-auto bg-stone-900/45 p-2 backdrop-blur-[2px] md:items-center md:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Modificar recibo"
@@ -211,7 +223,7 @@ export function EditExpenseModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="pin-card w-full max-w-xl rounded-t-3xl border-t-4 border-t-pin-accent p-4 shadow-2xl md:rounded-2xl md:p-6">
+      <div className="pin-card flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border-t-4 border-t-pin-accent p-4 shadow-2xl md:rounded-2xl md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-pin-ink">Modificar recibo</h2>
@@ -228,7 +240,7 @@ export function EditExpenseModal({
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid flex-1 gap-3 overflow-y-auto pr-1">
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
             <span className="inline-flex items-center gap-2">
               Tipo
@@ -451,19 +463,24 @@ export function EditExpenseModal({
           </div>
         </div>
 
+        {saveError ? (
+          <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{saveError}</p>
+        ) : null}
+
         <div className="mt-5 flex gap-2">
           <button
             type="button"
             onClick={() => void handleSave()}
-            disabled={receiptUploading}
+            disabled={receiptUploading || savePending}
             className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm disabled:opacity-60"
           >
-            {receiptUploading ? "A enviar imagem..." : "Guardar"}
+            {receiptUploading ? "A enviar imagem..." : savePending ? "A guardar..." : "Guardar"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
+            disabled={savePending}
+            className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm disabled:opacity-60"
           >
             Cancelar
           </button>
