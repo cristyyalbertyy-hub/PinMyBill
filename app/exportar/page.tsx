@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TopNav } from "@/components/top-nav";
+import { useT } from "@/lib/i18n/context";
 import type { CurrencyCode, ExpenseItem } from "@/lib/mock-data";
 
 type ExportMode =
@@ -37,7 +38,10 @@ function toCSVRow(values: string[]) {
 }
 
 /** Carrega imagem do mesmo site (ex.: /receipts/...) para data URL (jsPDF). */
-async function fetchImageAsDataUrl(path: string): Promise<string | null> {
+async function fetchImageAsDataUrl(
+  path: string,
+  readFailMessage: string,
+): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const url = path.startsWith("http")
     ? path
@@ -48,7 +52,7 @@ async function fetchImageAsDataUrl(path: string): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const fr = new FileReader();
     fr.onload = () => resolve(fr.result as string);
-    fr.onerror = () => reject(new Error("Leitura da imagem falhou."));
+    fr.onerror = () => reject(new Error(readFailMessage));
     fr.readAsDataURL(blob);
   });
 }
@@ -60,6 +64,7 @@ function dataUrlToImageFormat(dataUrl: string): "PNG" | "JPEG" | "WEBP" {
 }
 
 export default function ExportarPage() {
+  const t = useT();
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
   const [mode, setMode] = useState<ExportMode>("periodo-empresa");
@@ -75,7 +80,7 @@ export default function ExportarPage() {
   useEffect(() => {
     void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
       .then(async ([ex, cl]) => {
-        if (!ex.ok || !cl.ok) throw new Error("Falha a carregar dados.");
+        if (!ex.ok || !cl.ok) throw new Error(t("export.fetchDataFail"));
         const expenses = (await ex.json()) as ExpenseItem[];
         const clRows = (await cl.json()) as { name: string }[];
         if (Array.isArray(expenses)) setExpenseItems(expenses);
@@ -85,7 +90,7 @@ export default function ExportarPage() {
         setLoadError(null);
       })
       .catch(async () => {
-        setLoadError("Nao foi possivel carregar exportacao (timeout ou erro Neon/Prisma).");
+        setLoadError(t("export.loadError"));
         try {
           const healthRes = await fetch("/api/health/db");
           const health = (await healthRes.json()) as DbHealth;
@@ -94,7 +99,7 @@ export default function ExportarPage() {
           setDbHealth(null);
         }
       });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetch("/api/health/db")
@@ -138,21 +143,26 @@ export default function ExportarPage() {
     return Array.from(map.entries()).map(([currency, total]) => ({ currency, total }));
   }, [visibleRows]);
 
+  function expenseTypeLabel(type: ExpenseItem["type"]) {
+    if (type === "empresa") return t("type.empresa");
+    if (type === "pessoal") return t("type.pessoal");
+    return t("type.cliente");
+  }
+
   function downloadCSV() {
     const headers = [
-      "#",
-      "Data",
-      "Tipo",
-      "Categoria",
-      "Comerciante",
-      "Valor",
-      "Moeda",
-      "ID",
+      t("export.table.num"),
+      t("export.table.date"),
+      t("export.col.type"),
+      t("export.table.category"),
+      t("export.table.merchant"),
+      t("export.table.value"),
+      t("export.col.currency"),
+      t("export.table.id"),
     ];
 
     const lines = visibleRows.map((r, idx) => {
-      const type =
-        r.type === "empresa" ? "Empresa" : r.type === "pessoal" ? "Pessoal" : "Cliente";
+      const type = expenseTypeLabel(r.type);
       return toCSVRow([
         String(idx + 1),
         r.date,
@@ -184,22 +194,35 @@ export default function ExportarPage() {
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const title =
         mode === "periodo-empresa"
-          ? `Periodo - Empresa (${startDate} a ${endDate})`
+          ? t("export.pdfTitlePeriodCompany", { start: startDate, end: endDate })
           : mode === "periodo-pessoal"
-            ? `Periodo - Pessoal (${startDate} a ${endDate})`
+            ? t("export.pdfTitlePeriodPersonal", { start: startDate, end: endDate })
             : mode === "cliente-todo"
-              ? `Cliente - ${clientName} (tudo)`
-              : `Cliente - ${clientName} (${startDate} a ${endDate})`;
+              ? t("export.pdfTitleClientAll", { name: clientName })
+              : t("export.pdfTitleClientPeriod", {
+                  name: clientName,
+                  start: startDate,
+                  end: endDate,
+                });
 
       doc.setFontSize(14);
-      doc.text(`PinMyBill - Exportacao`, 40, 30);
+      doc.text(t("export.pdfDocumentTitle"), 40, 30);
       doc.setFontSize(12);
       doc.text(title, 40, 52);
 
-      const head = [["#", "Data", "Tipo", "Categoria", "Comerciante", "Valor", "Moeda"]];
+      const head = [
+        [
+          t("export.table.num"),
+          t("export.table.date"),
+          t("export.col.type"),
+          t("export.table.category"),
+          t("export.table.merchant"),
+          t("export.table.value"),
+          t("export.col.currency"),
+        ],
+      ];
       const body = visibleRows.map((r, idx) => {
-        const type =
-          r.type === "empresa" ? "Empresa" : r.type === "pessoal" ? "Pessoal" : "Cliente";
+        const type = expenseTypeLabel(r.type);
         return [
           String(idx + 1),
           r.date,
@@ -232,7 +255,7 @@ export default function ExportarPage() {
         yAfterTable += 14;
         doc.setFontSize(9);
         doc.setTextColor(13, 148, 136);
-        doc.text("Totais por moeda (linhas visiveis):", 40, yAfterTable);
+        doc.text(t("export.pdfTotalsVisibleRows"), 40, yAfterTable);
         yAfterTable += 14;
         doc.setTextColor(28, 25, 23);
         for (const t of totalsByCurrency) {
@@ -248,21 +271,24 @@ export default function ExportarPage() {
         const n = i + 1;
         doc.setFontSize(12);
         doc.setTextColor(28, 25, 23);
-        doc.text(`Recibo ${n} (mesmo numero da coluna #)`, margin, 36);
+        doc.text(t("export.pdfReceiptHeading", { n: String(n) }), margin, 36);
         doc.setFontSize(9);
         doc.text(`${row.id} · ${row.merchant} · ${row.date}`, margin, 52);
 
         if (!row.receiptImageUrl) {
           doc.setFontSize(10);
-          doc.text("Sem imagem de recibo anexada.", margin, 76);
+          doc.text(t("export.pdfNoImageBody"), margin, 76);
           continue;
         }
 
         try {
-          const dataUrl = await fetchImageAsDataUrl(row.receiptImageUrl);
+          const dataUrl = await fetchImageAsDataUrl(
+            row.receiptImageUrl,
+            t("export.imageReadFail"),
+          );
           if (!dataUrl) {
             doc.setFontSize(10);
-            doc.text("Nao foi possivel carregar a imagem (URL ou rede).", margin, 76);
+            doc.text(t("export.pdfImageFetchFail"), margin, 76);
             continue;
           }
           const fmt = dataUrlToImageFormat(dataUrl);
@@ -279,24 +305,20 @@ export default function ExportarPage() {
           doc.addImage(dataUrl, fmt, margin, 62, w, h);
         } catch {
           doc.setFontSize(10);
-          doc.text("Erro ao incluir a imagem nesta pagina.", margin, 76);
+          doc.text(t("export.pdfImagePageError"), margin, 76);
         }
       }
 
       doc.save(`pinmybill-${mode}.pdf`);
     } catch (e) {
-      setPdfError(e instanceof Error ? e.message : "Falha ao gerar PDF.");
+      setPdfError(e instanceof Error ? e.message : t("export.pdfGenerateFail"));
     } finally {
       setPdfGenerating(false);
     }
   }
 
   function removeRow(id: string, merchant: string) {
-    if (
-      !globalThis.confirm(
-        `Retirar esta linha da exportacao (${merchant})? A linha continua na base de dados; so deixa de aparecer nesta lista ate recarregares.`,
-      )
-    ) {
+    if (!globalThis.confirm(t("export.removeRow", { merchant }))) {
       return;
     }
     setHiddenRows((prev) => [...prev, id]);
@@ -306,7 +328,7 @@ export default function ExportarPage() {
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-6 text-3xl font-extrabold tracking-tight text-pin-ink md:mb-8 md:text-4xl">
-          Exportacao
+          {t("export.title")}
         </h1>
 
         <TopNav />
@@ -314,20 +336,16 @@ export default function ExportarPage() {
         {loadError ? (
           <p className="mt-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
-            {dbHealth?.db?.provider === "local"
-              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
-              : ""}
-            {dbHealth?.db?.provider === "missing"
-              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
-              : ""}
+            {dbHealth?.db?.provider === "local" ? t("hist.dbLocal") : ""}
+            {dbHealth?.db?.provider === "missing" ? t("hist.dbMissing") : ""}
           </p>
         ) : null}
 
         <section className="pin-card p-6 text-pin-ink">
-          <h2 className="text-lg font-bold text-pin-ink">Filtros de exportacao</h2>
+          <h2 className="text-lg font-bold text-pin-ink">{t("export.filters")}</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
-              Tipo de exportacao
+              {t("export.exportType")}
               <select
                 value={mode}
                 onChange={(event) => {
@@ -336,16 +354,16 @@ export default function ExportarPage() {
                 }}
                 className="pin-field"
               >
-                <option value="periodo-empresa">Periodo - Empresa</option>
-                <option value="periodo-pessoal">Periodo - Pessoal</option>
-                <option value="cliente-todo">Cliente - Tudo</option>
-                <option value="cliente-periodo">Cliente - Periodo</option>
+                <option value="periodo-empresa">{t("export.modePeriodCompany")}</option>
+                <option value="periodo-pessoal">{t("export.modePeriodPersonal")}</option>
+                <option value="cliente-todo">{t("export.modeClientAll")}</option>
+                <option value="cliente-periodo">{t("export.modeClientPeriod")}</option>
               </select>
             </label>
 
             {(mode === "cliente-todo" || mode === "cliente-periodo") && (
               <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
-                Cliente
+                {t("export.client")}
                 <select
                   value={clientName}
                   onChange={(event) => {
@@ -368,7 +386,7 @@ export default function ExportarPage() {
             mode === "cliente-periodo" ? (
               <div className="col-span-full grid grid-cols-2 gap-3 sm:gap-4">
                 <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-pin-muted">
-                  Data inicial
+                  {t("export.startDate")}
                   <input
                     type="date"
                     value={startDate}
@@ -380,7 +398,7 @@ export default function ExportarPage() {
                   />
                 </label>
                 <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-pin-muted">
-                  Data final
+                  {t("export.endDate")}
                   <input
                     type="date"
                     value={endDate}
@@ -398,7 +416,7 @@ export default function ExportarPage() {
           {visibleRows.length > 0 ? (
             <div className="mt-6 rounded-xl border border-teal-200/60 bg-pin-teal-soft/50 px-4 py-3 dark:border-teal-800/50 dark:bg-teal-950/30">
               <p className="text-xs font-semibold uppercase tracking-wide text-pin-muted">
-                Totais por moeda (ecra e PDF)
+                {t("export.totalsTitle")}
               </p>
               <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold text-pin-ink">
                 {totalsByCurrency.map((t) => (
@@ -418,7 +436,7 @@ export default function ExportarPage() {
               className="pin-btn-secondary min-h-11 rounded-full px-5 py-2.5 text-sm disabled:opacity-50"
               disabled={visibleRows.length === 0}
             >
-              Baixar CSV (Excel)
+              {t("export.csv")}
             </button>
             <button
               type="button"
@@ -426,7 +444,7 @@ export default function ExportarPage() {
               className="min-h-11 rounded-full border border-teal-700/25 bg-gradient-to-b from-white to-teal-50/90 px-5 py-2.5 text-sm font-semibold text-teal-900 shadow-sm ring-1 ring-teal-900/5 transition hover:border-teal-700/40 hover:to-teal-100/95 active:scale-[0.99] disabled:opacity-50 dark:border-teal-500/30 dark:from-stone-900 dark:to-teal-950/50 dark:text-teal-100 dark:ring-teal-400/10 dark:hover:border-teal-400/45 dark:hover:to-teal-900/40"
               disabled={visibleRows.length === 0 || pdfGenerating}
             >
-              {pdfGenerating ? "A gerar PDF..." : "Gerar PDF (tabela + totais + fotos)"}
+              {pdfGenerating ? t("export.pdfGenerating") : t("export.pdf")}
             </button>
           </div>
           {pdfError ? (
@@ -435,19 +453,18 @@ export default function ExportarPage() {
 
           <div className="mt-6 overflow-hidden rounded-xl border border-stone-200/80 dark:border-stone-700">
             <p className="border-b border-stone-200/80 bg-pin-teal-soft/30 px-3 py-2 text-xs text-pin-muted dark:border-stone-700 dark:bg-teal-950/20">
-              Lembrete: <span className="font-semibold text-red-600 dark:text-red-400">#</span> a vermelho = sem
-              imagem de recibo.
+              {t("export.reminder")}
             </p>
             <table className="w-full text-left text-sm text-pin-ink">
               <thead className="bg-pin-teal-soft/90 text-pin-muted dark:bg-teal-950/40 dark:text-stone-400">
                 <tr>
-                  <th className="px-3 py-2.5 font-semibold">#</th>
-                  <th className="px-3 py-2.5 font-semibold">ID</th>
-                  <th className="px-3 py-2.5 font-semibold">Data</th>
-                  <th className="px-3 py-2.5 font-semibold">Comerciante</th>
-                  <th className="px-3 py-2.5 font-semibold">Categoria</th>
-                  <th className="px-3 py-2.5 font-semibold">Valor</th>
-                  <th className="px-3 py-2.5 font-semibold">Acao</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.num")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.id")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.date")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.merchant")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.category")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.value")}</th>
+                  <th className="px-3 py-2.5 font-semibold">{t("export.table.action")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,7 +479,7 @@ export default function ExportarPage() {
                       className={`px-3 py-2.5 font-bold tabular-nums ${
                         hasImage ? "text-pin-accent" : "text-red-600 dark:text-red-400"
                       }`}
-                      title={hasImage ? undefined : "Sem imagem de recibo anexada"}
+                      title={hasImage ? undefined : t("export.noImageTitle")}
                     >
                       {idx + 1}
                     </td>
@@ -478,8 +495,8 @@ export default function ExportarPage() {
                         type="button"
                         onClick={() => removeRow(item.id, item.merchant)}
                         className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg bg-red-50 text-base font-bold leading-none text-red-700 shadow-sm ring-1 ring-red-200/90 transition-all duration-150 hover:bg-red-100 hover:shadow active:scale-95 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800/60"
-                        aria-label="Remover linha"
-                        title="Remover linha"
+                        aria-label={t("export.removeRowAria")}
+                        title={t("export.removeRowAria")}
                       >
                         ×
                       </button>
@@ -490,7 +507,7 @@ export default function ExportarPage() {
                 {visibleRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-3 py-4 text-pin-muted">
-                      Sem linhas para exportar com os filtros atuais.
+                      {t("export.empty")}
                     </td>
                   </tr>
                 ) : null}

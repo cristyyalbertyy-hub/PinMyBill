@@ -355,11 +355,7 @@ function DespesasPageContent() {
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Despesas</h1>
-        <p className="pin-lead mb-8 text-base">
-          Podes guardar com ou sem foto; sem imagem, indica comerciante ou descricao. Mais tarde podes
-          acrescentar a foto em <strong className="text-pin-ink">Historico</strong> (Modificar).
-        </p>
+        <h1 className="mb-8 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Despesas</h1>
 
         <TopNav />
 
@@ -403,10 +399,7 @@ function DespesasPageContent() {
         ) : (
           <>
         <section className="pin-card mb-4 p-4 md:p-6">
-          <h2 className="text-lg font-bold text-pin-ink">Novo recibo (confirmado)</h2>
-          <p className="mt-1 text-sm text-pin-muted">
-            Ao guardar, entra diretamente no historico como <strong className="text-pin-ink">processado</strong>.
-          </p>
+          <h2 className="text-lg font-bold text-pin-ink">Novo recibo</h2>
           <form onSubmit={handleUpload} className="mt-3 grid gap-3 md:grid-cols-3">
             <div className="flex flex-col gap-2 md:col-span-3">
               <span className="text-sm font-medium text-pin-muted">Imagem do recibo</span>
@@ -507,11 +500,7 @@ function DespesasPageContent() {
                     </div>
                   ) : null}
                 </div>
-              ) : (
-                <p className="text-sm text-pin-soft">
-                  Nenhuma imagem ainda — podes guardar mesmo assim (preenche comerciante abaixo).
-                </p>
-              )}
+              ) : null}
             </div>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
               Data do recibo
