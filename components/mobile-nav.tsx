@@ -2,23 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/lib/i18n/context";
 
 const links = [
-  { href: "/", label: "Inicio", icon: "🏠" },
-  { href: "/despesas", label: "Recibos", icon: "📷" },
-  { href: "/historico", label: "Historico", icon: "🗂️" },
-  { href: "/exportar", label: "PDF", icon: "📄" },
-  { href: "/categorias", label: "Categorias", icon: "🏷️" },
+  { href: "/", key: "mobile.home", icon: "🏠" },
+  { href: "/despesas", key: "mobile.receipts", icon: "📷" },
+  { href: "/historico", key: "mobile.history", icon: "🗂️" },
+  { href: "/exportar", key: "mobile.pdf", icon: "📄" },
+  { href: "/categorias", key: "mobile.categories", icon: "🏷️" },
 ] as const;
 
 export function MobileNav() {
   const pathname = usePathname();
+  const t = useT();
 
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-teal-200/40 bg-white/92 shadow-[0_-10px_40px_-10px_rgba(13,148,136,0.18),0_-1px_0_rgba(255,255,255,0.8)_inset] backdrop-blur-xl dark:border-stone-700 dark:bg-stone-950/92 dark:shadow-[0_-12px_40px_-8px_rgba(0,0,0,0.55)] md:hidden"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-      aria-label="Navegacao principal"
+      aria-label={t("mobile.aria")}
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-1 pt-2">
         {links.map((link) => {
@@ -36,7 +38,7 @@ export function MobileNav() {
                 <span className="text-lg leading-none" aria-hidden>
                   {link.icon}
                 </span>
-                <span className="truncate">{link.label}</span>
+                <span className="truncate">{t(link.key)}</span>
               </Link>
             </li>
           );

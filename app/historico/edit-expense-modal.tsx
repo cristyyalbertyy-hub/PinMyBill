@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
+import { useT } from "@/lib/i18n/context";
 import { uploadReceiptImage } from "@/lib/receipt-upload";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
@@ -31,6 +32,7 @@ export function EditExpenseModal({
   onCategoryCreated,
   onClientCreated,
 }: Props) {
+  const t = useT();
   const [type, setType] = useState<ExpenseType>(() => item?.type ?? "empresa");
   const [clientName, setClientName] = useState<string>(
     () => item?.clientName ?? clientNames[0] ?? "",
@@ -97,7 +99,7 @@ export function EditExpenseModal({
   async function saveNewClient() {
     const clean = newClientName.trim();
     if (!clean) {
-      setNewClientError("Escreve o nome do cliente.");
+      setNewClientError(t("edit.enterClientName"));
       return;
     }
     setNewClientSaving(true);
@@ -110,7 +112,7 @@ export function EditExpenseModal({
       });
       const data = (await res.json()) as { name?: string; error?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? "Nao foi possivel criar o cliente.");
+        throw new Error(data.error ?? t("edit.createClientFail"));
       }
       const name = data.name ?? clean;
       if (onClientCreated) await onClientCreated();
@@ -118,7 +120,7 @@ export function EditExpenseModal({
       setNewClientName("");
       setNewClientOpen(false);
     } catch (e) {
-      setNewClientError(e instanceof Error ? e.message : "Erro ao criar cliente.");
+      setNewClientError(e instanceof Error ? e.message : t("edit.createClientError"));
     } finally {
       setNewClientSaving(false);
     }
@@ -150,7 +152,7 @@ export function EditExpenseModal({
       let finalCategory = category;
       if (category === OTHER_CATEGORY_SENTINEL) {
         const other = otherCategoryName.trim();
-        if (!other) throw new Error("Escreve o nome da categoria 'Outra'.");
+        if (!other) throw new Error(t("edit.enterOtherCategory"));
 
         const createCatRes = await fetch("/api/categories", {
           method: "POST",
@@ -159,7 +161,7 @@ export function EditExpenseModal({
         });
 
         if (!createCatRes.ok) {
-          throw new Error("Falha ao criar a categoria 'Outra' (pode ser duplicada).");
+          throw new Error(t("edit.createOtherCatFail"));
         }
 
         const createdCat = (await createCatRes.json()) as { name: string };
@@ -171,11 +173,11 @@ export function EditExpenseModal({
       }
 
       if (currency === OTHER_CURRENCY_SENTINEL && !otherCurrency.trim()) {
-        throw new Error("Escreve a outra moeda (ex.: BRL).");
+        throw new Error(t("edit.enterOtherCurrency"));
       }
 
       if (!expenseDate.trim()) {
-        throw new Error("Indica a data do recibo.");
+        throw new Error(t("edit.enterDate"));
       }
 
       let receiptImageUrl: string | null | undefined = undefined;
@@ -211,7 +213,7 @@ export function EditExpenseModal({
             ? error
             : error && typeof error === "object" && "message" in error
               ? String((error as { message: unknown }).message)
-              : "Falha ao guardar alteracoes.";
+              : t("edit.saveChangesFail");
       setSaveError(message);
     } finally {
       setSavePending(false);
@@ -223,7 +225,7 @@ export function EditExpenseModal({
       className="fixed inset-0 z-[60] flex items-end justify-center overflow-y-auto bg-stone-900/45 p-2 backdrop-blur-[2px] md:items-center md:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Modificar recibo"
+      aria-label={t("edit.title")}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -231,7 +233,7 @@ export function EditExpenseModal({
       <div className="pin-card flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border-t-4 border-t-pin-accent p-4 shadow-2xl md:rounded-2xl md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-pin-ink">Modificar recibo</h2>
+            <h2 className="text-lg font-bold text-pin-ink">{t("edit.title")}</h2>
             <p className="mt-1 text-sm text-pin-muted">
               {item.merchant} · {item.id}
             </p>
@@ -241,14 +243,14 @@ export function EditExpenseModal({
             onClick={onClose}
             className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
           >
-            Fechar
+            {t("common.close")}
           </button>
         </div>
 
         <div className="mt-4 grid flex-1 gap-3 overflow-y-auto pr-1">
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
             <span className="inline-flex items-center gap-2">
-              Tipo
+              {t("common.type")}
               <ExpenseTypeCircle type={type} size="sm" />
             </span>
             <select
@@ -263,9 +265,9 @@ export function EditExpenseModal({
               }}
               className="pin-field pin-field-lg"
             >
-              <option value="empresa">Empresa</option>
-              <option value="pessoal">Pessoal</option>
-              <option value="cliente">Cliente</option>
+              <option value="empresa">{t("type.empresa")}</option>
+              <option value="pessoal">{t("type.pessoal")}</option>
+              <option value="cliente">{t("type.cliente")}</option>
             </select>
           </label>
 
@@ -273,7 +275,7 @@ export function EditExpenseModal({
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap items-end gap-2">
                 <label className="flex min-w-[min(100%,14rem)] flex-1 flex-col gap-1 text-sm font-medium text-pin-muted">
-                  Cliente
+                  {t("common.client")}
                   <select
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
@@ -281,7 +283,7 @@ export function EditExpenseModal({
                   >
                     {clientsList.map((c) => (
                       <option key={c || "empty"} value={c}>
-                        {c || "(sem clientes — usa Novo cliente)"}
+                        {c || t("edit.noClientsOption")}
                       </option>
                     ))}
                   </select>
@@ -294,14 +296,14 @@ export function EditExpenseModal({
                   }}
                   className="min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition touch-manipulation hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500"
                 >
-                  Novo cliente
+                  {t("common.newClient")}
                 </button>
               </div>
             </div>
           ) : null}
 
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-            Data do recibo
+            {t("common.date")}
             <input
               type="date"
               value={expenseDate}
@@ -312,7 +314,7 @@ export function EditExpenseModal({
           </label>
 
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-            Categoria
+            {t("common.category")}
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -323,25 +325,25 @@ export function EditExpenseModal({
                   {c}
                 </option>
               ))}
-              <option value={OTHER_CATEGORY_SENTINEL}>Outra...</option>
+              <option value={OTHER_CATEGORY_SENTINEL}>{t("common.other")}</option>
             </select>
           </label>
 
           {category === OTHER_CATEGORY_SENTINEL ? (
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Nome da outra categoria
+              {t("desp.otherCategory")}
               <input
                 value={otherCategoryName}
                 onChange={(e) => setOtherCategoryName(e.target.value)}
                 className="pin-field pin-field-lg"
-                placeholder="Ex: Eventos, Marketing, etc."
+                placeholder={t("edit.otherCategoryPh")}
               />
             </label>
           ) : null}
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Moeda
+              {t("common.currency")}
               <select
                 value={currency}
                 onChange={(e) => {
@@ -362,18 +364,18 @@ export function EditExpenseModal({
             </label>
             {currency === OTHER_CURRENCY_SENTINEL ? (
               <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                Outra moeda
+                {t("desp.otherCurrency")}
                 <input
                   value={otherCurrency}
                   onChange={(e) => setOtherCurrency(e.target.value.toUpperCase())}
                   className="pin-field pin-field-lg"
-                  placeholder="Ex: BRL"
+                  placeholder={t("desp.otherCurrencyPh")}
                   maxLength={12}
                 />
               </label>
             ) : null}
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Valor
+              {t("common.amount")}
               <input
                 type="number"
                 min="0"
@@ -386,10 +388,8 @@ export function EditExpenseModal({
           </div>
 
           <div className="border-t border-stone-200/80 pt-4 dark:border-stone-700">
-            <p className="text-sm font-medium text-pin-muted">Imagem do recibo</p>
-            <p className="mt-1 text-xs text-pin-soft">
-              Podes acrescentar ou trocar a foto mais tarde; tambem podes remover.
-            </p>
+            <p className="text-sm font-medium text-pin-muted">{t("common.photo")}</p>
+            <p className="mt-1 text-xs text-pin-soft">{t("edit.receiptImageLead")}</p>
             <input
               ref={receiptCameraRef}
               type="file"
@@ -415,25 +415,28 @@ export function EditExpenseModal({
                 onClick={() => receiptCameraRef.current?.click()}
                 className="pin-btn-primary min-h-10 rounded-xl px-3 py-2 text-sm"
               >
-                Tirar foto
+                {t("common.takePhoto")}
               </button>
               <button
                 type="button"
                 onClick={() => receiptGalleryRef.current?.click()}
                 className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
               >
-                Carregar imagem
+                {t("common.uploadImage")}
               </button>
               {(currentItem.receiptImageUrl || receiptFile) && !removeReceipt ? (
                 <button
                   type="button"
                   onClick={() => {
+                    if (!globalThis.confirm(t("confirm.removeReceipt"))) {
+                      return;
+                    }
                     setRemoveReceipt(true);
                     setReceiptFile(null);
                   }}
                   className="min-h-10 rounded-xl px-3 py-2 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-50 dark:text-red-300 dark:ring-red-900 dark:hover:bg-red-950/40"
                 >
-                  Remover imagem
+                  {t("edit.removeImage")}
                 </button>
               ) : null}
               {removeReceipt ? (
@@ -442,7 +445,7 @@ export function EditExpenseModal({
                   onClick={() => setRemoveReceipt(false)}
                   className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
                 >
-                  Anular remocao
+                  {t("edit.undoRemove")}
                 </button>
               ) : null}
             </div>
@@ -462,7 +465,7 @@ export function EditExpenseModal({
                   className="max-h-40 w-auto rounded-lg object-contain ring-1 ring-stone-200 dark:ring-stone-600"
                 />
               ) : (
-                <p className="text-sm text-pin-soft">Sem imagem anexada.</p>
+                <p className="text-sm text-pin-soft">{t("edit.noImage")}</p>
               )}
             </div>
           </div>
@@ -479,7 +482,11 @@ export function EditExpenseModal({
             disabled={receiptUploading || savePending}
             className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm disabled:opacity-60"
           >
-            {receiptUploading ? "A enviar imagem..." : savePending ? "A guardar..." : "Guardar"}
+            {receiptUploading
+              ? t("edit.saveUploading")
+              : savePending
+                ? t("edit.saving")
+                : t("common.save")}
           </button>
           <button
             type="button"
@@ -487,7 +494,7 @@ export function EditExpenseModal({
             disabled={savePending}
             className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm disabled:opacity-60"
           >
-            Cancelar
+            {t("common.cancel")}
           </button>
         </div>
 
@@ -503,18 +510,16 @@ export function EditExpenseModal({
           >
             <div className="pin-card w-full max-w-md rounded-t-3xl border-t-4 border-t-pin-warm p-4 shadow-2xl md:rounded-2xl md:p-6">
               <h3 id="edit-new-client-title" className="text-lg font-bold text-pin-ink">
-                Novo cliente
+                {t("edit.newClientTitle")}
               </h3>
-              <p className="mt-1 text-sm text-pin-muted">
-                O nome fica guardado na base de dados e aparece nesta lista.
-              </p>
+              <p className="mt-1 text-sm text-pin-muted">{t("edit.newClientLead")}</p>
               <label className="mt-4 flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                Nome
+                {t("common.name")}
                 <input
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
                   className="pin-field pin-field-lg"
-                  placeholder="Ex: Hotel X, Cliente Y"
+                  placeholder={t("edit.newClientPlaceholder")}
                   autoComplete="organization"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -534,14 +539,14 @@ export function EditExpenseModal({
                   onClick={() => void saveNewClient()}
                   className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm"
                 >
-                  {newClientSaving ? "A guardar..." : "Guardar"}
+                  {newClientSaving ? t("common.saving") : t("common.save")}
                 </button>
                 <button
                   type="button"
                   onClick={closeNewClientModal}
                   className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>

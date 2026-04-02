@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
+import { useT } from "@/lib/i18n/context";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BORDER_BY_TYPE: Record<ExpenseItem["type"], string> = {
@@ -17,6 +18,8 @@ type Props = {
 };
 
 export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
+  const t = useT();
+
   return (
     <article
       className={`pin-card pin-card-hover relative overflow-hidden border-l-4 p-4 pl-4 ${BORDER_BY_TYPE[item.type]}`}
@@ -27,14 +30,14 @@ export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
           onClick={onModify}
           className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm active:scale-[0.98]"
         >
-          Modificar
+          {t("common.modify")}
         </button>
         <button
           type="button"
           onClick={onDelete}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold leading-none text-red-600 ring-1 ring-red-200/90 transition hover:bg-red-50 active:scale-[0.98] dark:text-red-400 dark:ring-red-900/80 dark:hover:bg-red-950/50"
-          aria-label="Remover recibo"
-          title="Remover"
+          aria-label={t("hist.removeReceiptAria")}
+          title={t("common.remove")}
         >
           ×
         </button>
@@ -69,13 +72,13 @@ export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
 
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-pin-muted">Tipo</span>
+          <span className="text-pin-muted">{t("common.type")}</span>
           <ExpenseTypeCircle type={item.type} />
         </div>
 
         {item.type === "cliente" ? (
           <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="text-pin-muted">Cliente</span>
+            <span className="text-pin-muted">{t("common.client")}</span>
             <span className="max-w-[55%] truncate text-right font-semibold text-pin-ink">
               {item.clientName ?? ""}
             </span>
@@ -83,14 +86,14 @@ export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
         ) : null}
 
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-pin-muted">Categoria</span>
+          <span className="text-pin-muted">{t("common.category")}</span>
           <span className="max-w-[55%] truncate text-right font-semibold text-pin-ink">
             {item.category}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-pin-muted">Valor</span>
+          <span className="text-pin-muted">{t("common.value")}</span>
           <span className="font-bold text-pin-accent">{item.currency} {item.amount}</span>
         </div>
       </div>

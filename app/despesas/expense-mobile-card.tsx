@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useT } from "@/lib/i18n/context";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
 type Props = {
@@ -34,6 +35,7 @@ export function ExpenseMobileCard(props: Props) {
     onToggleEdit,
   } = props;
 
+  const t = useT();
   const list = categoryNamesForType.length ? categoryNamesForType : [item.category];
 
   return (
@@ -66,7 +68,7 @@ export function ExpenseMobileCard(props: Props) {
                   : "bg-amber-100 text-amber-700"
               }`}
             >
-              {item.status}
+              {t(`status.${item.status}`)}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-neutral-500">
@@ -77,22 +79,22 @@ export function ExpenseMobileCard(props: Props) {
 
       <div className="mt-4 space-y-3">
         <label className="block text-xs font-medium text-neutral-600">
-          Tipo
+          {t("common.type")}
           <select
             value={item.type}
             onChange={(e) => onType(item.id, e.target.value as ExpenseType)}
             disabled={!isEditable}
             className="mt-1 min-h-12 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-base outline-none focus:border-neutral-500 disabled:bg-neutral-100"
           >
-            <option value="empresa">Emp</option>
-            <option value="cliente">Cli</option>
-            <option value="pessoal">Pes</option>
+            <option value="empresa">{t("mobile.abbr.empresa")}</option>
+            <option value="cliente">{t("mobile.abbr.cliente")}</option>
+            <option value="pessoal">{t("mobile.abbr.pessoal")}</option>
           </select>
         </label>
 
         {item.type === "cliente" ? (
           <label className="block text-xs font-medium text-neutral-600">
-            Cliente
+            {t("common.client")}
             <select
               value={item.clientName ?? clientNames[0] ?? ""}
               onChange={(e) => onClient(item.id, e.target.value)}
@@ -109,7 +111,7 @@ export function ExpenseMobileCard(props: Props) {
         ) : null}
 
         <label className="block text-xs font-medium text-neutral-600">
-          Categoria
+          {t("common.category")}
           <select
             value={item.category}
             onChange={(e) => onCategory(item.id, e.target.value)}
@@ -129,7 +131,7 @@ export function ExpenseMobileCard(props: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-xs font-medium text-neutral-600">
-            Moeda
+            {t("mobile.currency")}
             <select
               value={item.currency}
               onChange={(e) => onCurrency(item.id, e.target.value as CurrencyCode)}
@@ -141,11 +143,11 @@ export function ExpenseMobileCard(props: Props) {
               <option value="SAR">SAR</option>
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
-              <option value="OUTRO">Outro</option>
+              <option value="OUTRO">{t("common.other")}</option>
             </select>
           </label>
           <label className="block text-xs font-medium text-neutral-600">
-            Valor
+            {t("common.amount")}
             <input
               type="number"
               min={0}
@@ -166,7 +168,7 @@ export function ExpenseMobileCard(props: Props) {
             onClick={() => onMarkProcessed(item.id)}
             className="min-h-12 flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white active:bg-emerald-700"
           >
-            Marcar como processado
+            {t("mobile.markProcessed")}
           </button>
         ) : (
           <button
@@ -174,7 +176,7 @@ export function ExpenseMobileCard(props: Props) {
             onClick={() => onToggleEdit(item.id)}
             className="min-h-12 flex-1 rounded-xl bg-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-900 active:bg-neutral-300"
           >
-            {editOpen ? "Fechar edicao" : "Modificar"}
+            {editOpen ? t("mobile.closeEdit") : t("common.modify")}
           </button>
         )}
       </div>

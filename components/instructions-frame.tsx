@@ -1,38 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
+import { useT } from "@/lib/i18n/context";
 
 function InstructionsBody() {
+  const t = useT();
+
   return (
     <div className="space-y-5 text-sm leading-relaxed text-pin-muted">
       <section>
-        <h3 className="mb-2 font-bold text-pin-ink">Novo recibo</h3>
+        <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.newReceiptTitle")}</h3>
+        <p>{t("instructions.newReceiptBody")}</p>
+      </section>
+      <section>
+        <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.historyTitle")}</h3>
+        <p>{t("instructions.historyBody")}</p>
+      </section>
+      <section>
+        <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.catTitle")}</h3>
         <p>
-          Tira foto do recibo (ou escolhe ficheiro), indica o tipo (Empresa, Pessoal ou
-          Cliente), a categoria ou &quot;Outra…&quot; para criar uma nova, e preenche valor e
-          moeda. Ao guardar, o recibo fica no histórico.
+          {t("instructions.catBody")}
         </p>
       </section>
       <section>
-        <h3 className="mb-2 font-bold text-pin-ink">Histórico</h3>
-        <p>
-          Vês todos os recibos; se algo estiver errado, abre Modificar e ajustas.
-        </p>
-      </section>
-      <section>
-        <h3 className="mb-2 font-bold text-pin-ink">Categorias e clientes</h3>
-        <p>
-          No browser, abre o endereço <code className="font-mono text-pin-ink">/categorias</code> (a
-          seguir ao domínio da app) para gerires subcategorias por tipo e os nomes dos clientes —
-          úteis para despesas de cliente e para exportar. Podes guardar essa página nos favoritos.
-        </p>
-      </section>
-      <section>
-        <h3 className="mb-2 font-bold text-pin-ink">Exportar</h3>
-        <p>
-          Escolhe o modo (período empresa ou pessoal, por cliente, etc.), define as datas,
-          remove linhas da lista se não quiseres incluí-las e gera CSV (Excel) ou PDF.
-        </p>
+        <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.exportTitle")}</h3>
+        <p>{t("instructions.exportBody")}</p>
       </section>
     </div>
   );
@@ -41,6 +33,7 @@ function InstructionsBody() {
 export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const titleId = useId();
+  const t = useT();
 
   const onKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") setOpen(false);
@@ -64,7 +57,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
         type="button"
         onClick={() => setOpen(true)}
         className="pin-btn-secondary fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex h-12 w-12 items-center justify-center rounded-full border text-lg font-bold shadow-lg touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl motion-reduce:hover:translate-y-0 active:scale-95 md:bottom-6"
-        aria-label="Instruções"
+        aria-label={t("instructions.btnAria")}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -78,7 +71,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            aria-label="Fechar"
+            aria-label={t("instructions.close")}
             onClick={() => setOpen(false)}
           />
           <div
@@ -89,14 +82,14 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           >
             <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3 dark:border-stone-700">
               <h2 id={titleId} className="text-lg font-bold text-pin-ink">
-                Instruções
+                {t("instructions.title")}
               </h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-xl px-3 py-1.5 text-sm font-semibold text-pin-muted transition-colors duration-200 hover:bg-pin-teal-soft hover:text-pin-ink active:scale-[0.98]"
               >
-                Fechar
+                {t("instructions.close")}
               </button>
             </div>
             <div className="max-h-[min(75vh,30rem)] overflow-y-auto px-4 py-4">

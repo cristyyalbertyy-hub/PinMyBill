@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { InstructionsFrame } from "@/components/instructions-frame";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 import { MobileNav } from "@/components/mobile-nav";
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     default: "PinMyBill · Beta",
     template: "%s · PinMyBill Beta",
   },
-  description: "Gestao inteligente de recibos pessoais e de empresa (versao Beta).",
+  description: "Smart receipt management for personal and business use (Beta).",
   applicationName: "PinMyBill Beta",
   appleWebApp: {
     capable: true,
@@ -53,12 +54,14 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="pt"
+      lang="en"
       className={`${jakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="pin-app min-h-full flex flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-        <InstructionsFrame>{children}</InstructionsFrame>
-        <MobileNav />
+        <Providers>
+          <InstructionsFrame>{children}</InstructionsFrame>
+          <MobileNav />
+        </Providers>
       </body>
     </html>
   );

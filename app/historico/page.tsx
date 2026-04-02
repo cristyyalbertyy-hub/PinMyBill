@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ExpenseTypeCircle, ExpenseTypeLegend } from "@/components/expense-type-circle";
 import { TopNav } from "@/components/top-nav";
 import type { ExpenseItem, ExpenseType } from "@/lib/mock-data";
+import { useT } from "@/lib/i18n/context";
 import { ExpenseHistoryCard } from "./expense-history-card";
 import { EditExpenseModal } from "./edit-expense-modal";
 
@@ -24,6 +25,7 @@ type DbHealth = {
 };
 
 export default function HistoricoPage() {
+  const t = useT();
   const [items, setItems] = useState<ExpenseItem[]>([]);
   const [categoryNames, setCategoryNames] = useState<GroupedNames>({
     pessoal: [],
@@ -91,11 +93,11 @@ export default function HistoricoPage() {
       } catch {
         setDbHealth(null);
       }
-      setLoadError("Nao foi possivel carregar o historico (timeout ou erro Neon/Prisma).");
+      setLoadError(t("hist.loadError"));
     } finally {
       setReady(true);
     }
-  }, []);
+  }, [t]);
 
   const refreshCategoriesOnly = useCallback(async () => {
     const controller = new AbortController();
@@ -158,27 +160,27 @@ export default function HistoricoPage() {
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(data?.error ?? "Nao foi possivel guardar as alteracoes.");
+      throw new Error(data?.error ?? t("confirm.saveFail"));
     }
     const data = (await res.json()) as ExpenseItem;
     setItems((prev) => prev.map((i) => (i.id === code ? { ...i, ...data } : i)));
-  }, []);
+  }, [t]);
 
   const deleteExpense = useCallback(async (code: string) => {
-    if (!globalThis.confirm("Remover este recibo? Esta accao nao pode ser anulada.")) return;
+    if (!globalThis.confirm(t("confirm.deleteReceipt"))) return;
     try {
       const res = await fetch(`/api/expenses/${encodeURIComponent(code)}`, { method: "DELETE" });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
-        globalThis.alert(data.error ?? "Nao foi possivel remover.");
+        globalThis.alert(data.error ?? t("confirm.deleteFail"));
         return;
       }
       setItems((prev) => prev.filter((i) => i.id !== code));
       setEditingCode((prev) => (prev === code ? null : prev));
     } catch {
-      globalThis.alert("Erro ao remover.");
+      globalThis.alert(t("confirm.removeError"));
     }
-  }, []);
+  }, [t]);
 
   async function handleSave(code: string, updates: Record<string, unknown>) {
     await patchExpense(code, updates);
@@ -187,7 +189,7 @@ export default function HistoricoPage() {
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Historico</h1>
+        <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">{t("hist.title")}</h1>
 
         <ExpenseTypeLegend className="mb-8" />
 
@@ -196,23 +198,19 @@ export default function HistoricoPage() {
         {loadError ? (
           <p className="mb-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
-            {dbHealth?.db?.provider === "local"
-              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
-              : ""}
-            {dbHealth?.db?.provider === "missing"
-              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
-              : ""}
+            {dbHealth?.db?.provider === "local" ? t("hist.dbLocal") : ""}
+            {dbHealth?.db?.provider === "missing" ? t("hist.dbMissing") : ""}
           </p>
         ) : null}
 
         {!ready ? (
-          <p className="text-sm font-medium text-pin-muted">A carregar...</p>
+          <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
         ) : (
           <>
             <div className="space-y-3 md:hidden">
               {items.length === 0 ? (
                 <p className="pin-card border-dashed p-8 text-center text-sm font-medium text-pin-muted">
-                  Ainda nao ha recibos.
+                  {t("hist.empty")}
                 </p>
               ) : (
                 items.map((item) => (
@@ -230,14 +228,14 @@ export default function HistoricoPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-pin-teal-soft/80 text-pin-muted dark:bg-teal-950/40 dark:text-stone-400">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">ID</th>
-                    <th className="px-4 py-3 font-semibold">Foto</th>
-                    <th className="px-4 py-3 font-semibold">Comerciante</th>
-                    <th className="px-4 py-3 font-semibold">Data</th>
-                    <th className="px-4 py-3 font-semibold">Tipo</th>
-                    <th className="px-4 py-3 font-semibold">Categoria</th>
-                    <th className="px-4 py-3 font-semibold">Valor</th>
-                    <th className="px-4 py-3 font-semibold">Acao</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.id")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.photo")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.merchant")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.date")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.type")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.category")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.value")}</th>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,14 +276,14 @@ export default function HistoricoPage() {
                             onClick={() => setEditingCode(item.id)}
                             className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
                           >
-                            Modificar
+                            {t("common.modify")}
                           </button>
                           <button
                             type="button"
                             onClick={() => void deleteExpense(item.id)}
                             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-red-600 ring-1 ring-red-200/90 hover:bg-red-50 dark:text-red-400 dark:ring-red-900/80 dark:hover:bg-red-950/50"
-                            aria-label="Remover recibo"
-                            title="Remover"
+                            aria-label={t("hist.removeReceiptAria")}
+                            title={t("common.remove")}
                           >
                             ×
                           </button>
@@ -296,7 +294,7 @@ export default function HistoricoPage() {
                   {items.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="px-4 py-6 text-pin-muted">
-                        Ainda nao ha recibos.
+                        {t("hist.empty")}
                       </td>
                     </tr>
                   ) : null}

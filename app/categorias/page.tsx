@@ -63,7 +63,14 @@ export default function CategoriasPage() {
     globalThis.alert(data?.error ?? "Falha ao atualizar categoria.");
   }
 
-  async function deleteCategory(id: string) {
+  async function deleteCategory(id: string, displayName: string) {
+    if (
+      !globalThis.confirm(
+        `Remover a categoria "${displayName}"? Esta accao nao pode ser anulada.`,
+      )
+    ) {
+      return;
+    }
     const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
     if (res.ok) {
       await loadAll();
@@ -99,7 +106,14 @@ export default function CategoriasPage() {
     if (res.ok) await loadAll();
   }
 
-  async function deleteClient(id: string) {
+  async function deleteClient(id: string, displayName: string) {
+    if (
+      !globalThis.confirm(
+        `Remover o cliente "${displayName}"? Esta accao nao pode ser anulada.`,
+      )
+    ) {
+      return;
+    }
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
     if (res.ok) await loadAll();
   }
@@ -144,7 +158,7 @@ export default function CategoriasPage() {
               />
               <button
                 type="button"
-                onClick={() => void deleteCategory(row.id)}
+                onClick={() => void deleteCategory(row.id, row.name)}
                 aria-label="Apagar categoria"
                 title="Apagar categoria"
                 className="rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900"
@@ -234,7 +248,7 @@ export default function CategoriasPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => void deleteClient(row.id)}
+                    onClick={() => void deleteClient(row.id, row.name)}
                     aria-label="Apagar cliente"
                     title="Apagar cliente"
                     className="rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900"

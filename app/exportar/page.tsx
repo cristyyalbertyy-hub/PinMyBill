@@ -291,7 +291,14 @@ export default function ExportarPage() {
     }
   }
 
-  function removeRow(id: string) {
+  function removeRow(id: string, merchant: string) {
+    if (
+      !globalThis.confirm(
+        `Retirar esta linha da exportacao (${merchant})? A linha continua na base de dados; so deixa de aparecer nesta lista ate recarregares.`,
+      )
+    ) {
+      return;
+    }
     setHiddenRows((prev) => [...prev, id]);
   }
 
@@ -469,7 +476,7 @@ export default function ExportarPage() {
                     <td className="px-3 py-2.5">
                       <button
                         type="button"
-                        onClick={() => removeRow(item.id)}
+                        onClick={() => removeRow(item.id, item.merchant)}
                         className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg bg-red-50 text-base font-bold leading-none text-red-700 shadow-sm ring-1 ring-red-200/90 transition-all duration-150 hover:bg-red-100 hover:shadow active:scale-95 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800/60"
                         aria-label="Remover linha"
                         title="Remover linha"

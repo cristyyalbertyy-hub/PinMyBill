@@ -495,6 +495,7 @@ function DespesasPageContent() {
                       <button
                         type="button"
                         onClick={() => {
+                          if (!globalThis.confirm("Queres mesmo limpar a imagem selecionada?")) return;
                           setUploadFile(null);
                           setUploadError(null);
                         }}
