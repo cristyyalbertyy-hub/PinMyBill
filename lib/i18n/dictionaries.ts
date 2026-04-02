@@ -92,6 +92,7 @@ const en: Record<string, string> = {
   "confirm.removeError": "Error while removing.",
   "confirm.saveFail": "Could not save changes.",
   "desp.title": "Expenses",
+  "desp.newReceiptHeading": "New receipt",
   "desp.sending": "Sending…",
   "desp.saveReceipt": "Save receipt",
   "desp.loadError": "Could not load data (timeout or Neon/Prisma error). Check DATABASE_URL and Neon access.",
@@ -283,6 +284,7 @@ const fr: Record<string, string> = {
   "confirm.removeError": "Erreur lors de la suppression.",
   "confirm.saveFail": "Impossible d’enregistrer les modifications.",
   "desp.title": "Dépenses",
+  "desp.newReceiptHeading": "Nouveau reçu",
   "desp.sending": "Envoi…",
   "desp.saveReceipt": "Enregistrer le reçu",
   "desp.loadError":
@@ -474,6 +476,7 @@ const pt: Record<string, string> = {
   "confirm.removeError": "Erro ao remover.",
   "confirm.saveFail": "Não foi possível guardar as alterações.",
   "desp.title": "Despesas",
+  "desp.newReceiptHeading": "Novo recibo",
   "desp.sending": "A enviar…",
   "desp.saveReceipt": "Guardar recibo",
   "desp.loadError":

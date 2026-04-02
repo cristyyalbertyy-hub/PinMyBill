@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { uploadReceiptImage } from "@/lib/receipt-upload";
 import { TopNav } from "@/components/top-nav";
+import { useT } from "@/lib/i18n/context";
 import type { CurrencyCode, ExpenseType } from "@/lib/mock-data";
 
 type GroupedNames = {
@@ -23,6 +24,7 @@ type DbHealth = {
 };
 
 function DespesasPageContent() {
+  const t = useT();
   const searchParams = useSearchParams();
   const OTHER_CATEGORY_SENTINEL = "__OUTRA__";
   const OTHER_CURRENCY_SENTINEL = "OUTRO";
@@ -355,7 +357,9 @@ function DespesasPageContent() {
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-8 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Despesas</h1>
+        <h1 className="mb-8 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">
+          {t("desp.title")}
+        </h1>
 
         <TopNav />
 
@@ -363,15 +367,15 @@ function DespesasPageContent() {
           <div className="mt-4 flex justify-end">
             <p className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-pin-teal-soft/65 px-3 py-1 text-[11px] font-semibold text-pin-muted ring-1 ring-teal-200/70 dark:bg-teal-950/25 dark:ring-teal-800/60">
               <span aria-hidden>●</span>
-              <span>DB:</span>
+              <span>{t("db.label")}</span>
               <strong className="text-pin-ink">
                 {dbHealth.db?.provider === "neon"
-                  ? "Neon"
+                  ? t("db.badge.neon")
                   : dbHealth.db?.provider === "local"
-                    ? "localhost"
+                    ? t("db.badge.local")
                     : dbHealth.db?.provider === "missing"
-                      ? "em falta"
-                      : "remota"}
+                      ? t("db.badge.missing")
+                      : t("db.badge.remote")}
               </strong>
               {dbHealth.db?.host ? (
                 <span className="max-w-[14rem] truncate text-pin-soft" title={dbHealth.db.host}>
@@ -385,24 +389,20 @@ function DespesasPageContent() {
         {loadError ? (
           <p className="mb-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
-            {dbHealth?.db?.provider === "local"
-              ? " Diagnostico: esta a usar localhost; remove override DATABASE_URL neste terminal."
-              : ""}
-            {dbHealth?.db?.provider === "missing"
-              ? " Diagnostico: DATABASE_URL nao definida no ambiente deste processo."
-              : ""}
+            {dbHealth?.db?.provider === "local" ? t("hist.dbLocal") : ""}
+            {dbHealth?.db?.provider === "missing" ? t("hist.dbMissing") : ""}
           </p>
         ) : null}
 
         {!ready ? (
-          <p className="text-sm font-medium text-pin-muted">A carregar...</p>
+          <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
         ) : (
           <>
         <section className="pin-card mb-4 p-4 md:p-6">
-          <h2 className="text-lg font-bold text-pin-ink">Novo recibo</h2>
+          <h2 className="text-lg font-bold text-pin-ink">{t("desp.newReceiptHeading")}</h2>
           <form onSubmit={handleUpload} className="mt-3 grid gap-3 md:grid-cols-3">
             <div className="flex flex-col gap-2 md:col-span-3">
-              <span className="text-sm font-medium text-pin-muted">Imagem do recibo</span>
+              <span className="text-sm font-medium text-pin-muted">{t("common.photo")}</span>
               <input
                 ref={cameraInputRef}
                 type="file"
@@ -427,7 +427,7 @@ function DespesasPageContent() {
                   type="button"
                   onClick={() => cameraInputRef.current?.click()}
                   className="pin-btn-primary inline-flex min-h-12 items-center gap-2 rounded-xl px-4 py-2.5 text-sm touch-manipulation"
-                  aria-label="Tirar foto ao recibo com a camara"
+                  aria-label={t("common.takePhoto")}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -443,13 +443,13 @@ function DespesasPageContent() {
                     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
                     <circle cx="12" cy="13" r="3" />
                   </svg>
-                  Tirar foto
+                  {t("common.takePhoto")}
                 </button>
                 <button
                   type="button"
                   onClick={() => galleryInputRef.current?.click()}
                   className="pin-btn-secondary inline-flex min-h-12 items-center gap-2 rounded-xl px-4 py-2.5 text-sm touch-manipulation"
-                  aria-label="Carregar imagem do recibo a partir dos ficheiros"
+                  aria-label={t("common.uploadImage")}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -466,19 +466,20 @@ function DespesasPageContent() {
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
-                  Carregar imagem
+                  {t("common.uploadImage")}
                 </button>
               </div>
               {uploadFile ? (
                 <div className="space-y-2">
                   <p className="text-sm text-pin-muted">
-                    Ficheiro: <span className="font-medium text-pin-ink">{uploadFile.name}</span>
+                    {t("desp.file")}{" "}
+                    <span className="font-medium text-pin-ink">{uploadFile.name}</span>
                   </p>
                   {uploadPreviewUrl ? (
                     <div className="max-w-[14rem] overflow-hidden rounded-xl border border-stone-200/80 bg-white/80 p-1 shadow-sm dark:border-stone-700 dark:bg-stone-900/60">
                       <img
                         src={uploadPreviewUrl}
-                        alt="Pre-visualizacao do recibo"
+                        alt={t("desp.previewAlt")}
                         className="h-auto w-full max-h-64 rounded-lg object-contain"
                       />
                     </div>
@@ -488,14 +489,14 @@ function DespesasPageContent() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (!globalThis.confirm("Queres mesmo limpar a imagem selecionada?")) return;
+                          if (!globalThis.confirm(t("confirm.clearImage"))) return;
                           setUploadFile(null);
                           setUploadError(null);
                         }}
                         className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
-                        aria-label="Limpar a imagem do recibo"
+                        aria-label={t("common.clearImage")}
                       >
-                        Limpar imagem
+                        {t("common.clearImage")}
                       </button>
                     </div>
                   ) : null}
@@ -503,7 +504,7 @@ function DespesasPageContent() {
               ) : null}
             </div>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Data do recibo
+              {t("common.date")}
               <input
                 type="date"
                 value={uploadDate}
@@ -513,22 +514,20 @@ function DespesasPageContent() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-2">
-              Comerciante ou descricao
+              {t("common.merchant")}
               <input
                 value={uploadMerchant}
                 onChange={(event) => setUploadMerchant(event.target.value)}
                 className="pin-field pin-field-orange-focus"
                 placeholder={
-                  uploadFile
-                    ? "Opcional se tiveres imagem (usa o nome do ficheiro se vazio)"
-                    : "Obrigatorio sem imagem de recibo"
+                  uploadFile ? t("common.optionalWithImage") : t("common.requiredNoImage")
                 }
                 autoComplete="off"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
               <span className="inline-flex items-center gap-2">
-                Tipo
+                {t("common.type")}
                 <ExpenseTypeCircle type={uploadType} size="sm" />
               </span>
               <select
@@ -541,16 +540,16 @@ function DespesasPageContent() {
                 }}
                 className="pin-field"
               >
-                <option value="empresa">Empresa</option>
-                <option value="pessoal">Pessoal</option>
-                <option value="cliente">Cliente</option>
+                <option value="empresa">{t("type.empresa")}</option>
+                <option value="pessoal">{t("type.pessoal")}</option>
+                <option value="cliente">{t("type.cliente")}</option>
               </select>
             </label>
             {uploadType === "cliente" ? (
               <div className="flex flex-col gap-2 md:col-span-2">
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="flex min-w-[min(100%,14rem)] flex-1 flex-col gap-1 text-sm font-medium text-pin-muted">
-                    Cliente
+                    {t("common.client")}
                     <select
                       value={uploadClient}
                       onChange={(event) => setUploadClient(event.target.value)}
@@ -558,7 +557,7 @@ function DespesasPageContent() {
                     >
                       {clientsList.map((client) => (
                         <option key={client || "empty"} value={client}>
-                          {client || "(sem clientes — usa Novo cliente)"}
+                          {client || t("edit.noClientsOption")}
                         </option>
                       ))}
                     </select>
@@ -571,13 +570,13 @@ function DespesasPageContent() {
                     }}
                     className="pin-btn-primary min-h-12 shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold touch-manipulation active:scale-[0.98]"
                   >
-                    Novo cliente
+                    {t("common.newClient")}
                   </button>
                 </div>
               </div>
             ) : null}
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Categoria
+              {t("common.category")}
               <select
                 value={uploadCategory}
                 onChange={(event) => setUploadCategory(event.target.value)}
@@ -590,22 +589,22 @@ function DespesasPageContent() {
                     </option>
                   ),
                 )}
-                <option value={OTHER_CATEGORY_SENTINEL}>Outra...</option>
+                <option value={OTHER_CATEGORY_SENTINEL}>{t("common.other")}</option>
               </select>
             </label>
             {uploadCategory === OTHER_CATEGORY_SENTINEL ? (
               <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-3">
-                Nome da outra categoria
+                {t("desp.otherCategory")}
                 <input
                   value={uploadOtherCategoryName}
                   onChange={(event) => setUploadOtherCategoryName(event.target.value)}
                   className="pin-field"
-                  placeholder="Ex: Eventos, Marketing, etc."
+                  placeholder={t("desp.otherCategoryPh")}
                 />
               </label>
             ) : null}
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Valor
+              {t("common.amount")}
               <input
                 type="number"
                 min="0"
@@ -616,7 +615,7 @@ function DespesasPageContent() {
               />
             </label>
             <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-              Moeda
+              {t("common.currency")}
               <select
                 value={uploadCurrency}
                 onChange={(event) => {
@@ -633,17 +632,17 @@ function DespesasPageContent() {
                 <option value="SAR">SAR</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
-                <option value={OTHER_CURRENCY_SENTINEL}>Outra...</option>
+                <option value={OTHER_CURRENCY_SENTINEL}>{t("common.other")}</option>
               </select>
             </label>
             {uploadCurrency === OTHER_CURRENCY_SENTINEL ? (
               <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                Outra moeda
+                {t("desp.otherCurrency")}
                 <input
                   value={uploadOtherCurrency}
                   onChange={(event) => setUploadOtherCurrency(event.target.value.toUpperCase())}
                   className="pin-field"
-                  placeholder="Ex: BRL"
+                  placeholder={t("desp.otherCurrencyPh")}
                   maxLength={12}
                 />
               </label>
@@ -654,7 +653,7 @@ function DespesasPageContent() {
                 disabled={uploading}
                 className="min-h-12 touch-manipulation rounded-full px-6 py-3 text-base text-white shadow-md shadow-orange-500/30 ring-1 ring-orange-400/40 transition hover:bg-orange-400 active:scale-[0.98] dark:bg-orange-600 dark:ring-orange-500/35 dark:hover:bg-orange-500 bg-orange-500 md:py-2.5 md:text-sm w-auto"
               >
-                {uploading ? "A enviar..." : "Guardar recibo"}
+                {uploading ? t("desp.sending") : t("desp.saveReceipt")}
               </button>
             </div>
             {uploadError ? (
@@ -675,18 +674,16 @@ function DespesasPageContent() {
           >
             <div className="pin-card w-full max-w-md rounded-t-3xl border-t-4 border-t-pin-accent p-4 shadow-2xl md:rounded-2xl md:p-6">
               <h3 id="new-client-title" className="text-lg font-bold text-pin-ink">
-                Novo cliente
+                {t("edit.newClientTitle")}
               </h3>
-              <p className="mt-1 text-sm text-pin-muted">
-                O nome fica guardado na base de dados e aparece nesta lista para futuros recibos.
-              </p>
+              <p className="mt-1 text-sm text-pin-muted">{t("edit.newClientLead")}</p>
               <label className="mt-4 flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                Nome
+                {t("common.name")}
                 <input
                   value={newClientName}
                   onChange={(e) => setNewClientName(e.target.value)}
                   className="pin-field pin-field-lg"
-                  placeholder="Ex: Hotel X, Cliente Y"
+                  placeholder={t("edit.newClientPlaceholder")}
                   autoComplete="organization"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -706,14 +703,14 @@ function DespesasPageContent() {
                   onClick={() => void saveNewClient()}
                   className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm"
                 >
-                  {newClientSaving ? "A guardar..." : "Guardar"}
+                  {newClientSaving ? t("common.saving") : t("common.save")}
                 </button>
                 <button
                   type="button"
                   onClick={closeNewClientModal}
                   className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
                 >
-                  Cancelar
+                  {t("common.cancel")}
                 </button>
               </div>
             </div>
@@ -727,17 +724,20 @@ function DespesasPageContent() {
   );
 }
 
+function DespesasSuspenseFallback() {
+  const t = useT();
+  return (
+    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
+      </div>
+    </main>
+  );
+}
+
 export default function DespesasPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="pin-page px-4 pb-8 pt-4 md:p-10">
-          <div className="mx-auto max-w-5xl">
-            <p className="text-sm font-medium text-pin-muted">A carregar...</p>
-          </div>
-        </main>
-      }
-    >
+    <Suspense fallback={<DespesasSuspenseFallback />}>
       <DespesasPageContent />
     </Suspense>
   );
