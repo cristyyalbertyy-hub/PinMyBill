@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
+import { uploadReceiptImage } from "@/lib/receipt-upload";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
 type Props = {
@@ -183,12 +184,7 @@ export function EditExpenseModal({
       } else if (receiptFile) {
         setReceiptUploading(true);
         try {
-          const fd = new FormData();
-          fd.append("file", receiptFile);
-          const res = await fetch("/api/uploads", { method: "POST", body: fd });
-          const data = (await res.json()) as { url?: string; error?: string };
-          if (!res.ok || !data.url) throw new Error(data.error ?? "Falha no upload da imagem.");
-          receiptImageUrl = data.url;
+          receiptImageUrl = await uploadReceiptImage(receiptFile);
         } finally {
           setReceiptUploading(false);
         }
@@ -207,7 +203,16 @@ export function EditExpenseModal({
       await onSave(currentItem.id, updates);
       onClose();
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Falha ao guardar alteracoes.");
+      console.error("Falha ao guardar alteracoes:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : error && typeof error === "object" && "message" in error
+              ? String((error as { message: unknown }).message)
+              : "Falha ao guardar alteracoes.";
+      setSaveError(message);
     } finally {
       setSavePending(false);
     }

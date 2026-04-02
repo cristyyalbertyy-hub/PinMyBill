@@ -2,6 +2,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { getBlobReadWriteToken } from "@/lib/blob-token";
 
 export async function POST(request: Request) {
   try {
@@ -14,11 +15,14 @@ export async function POST(request: Request) {
 
     const extension = path.extname(file.name) || ".jpg";
     const fileName = `receipt-${Date.now()}${extension}`;
-    const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+    const blobToken = getBlobReadWriteToken();
+    const hasBlobToken = Boolean(blobToken);
 
     if (hasBlobToken) {
       const blob = await put(`receipts/${fileName}`, file, {
         access: "public",
+        token: blobToken,
+        contentType: file.type || undefined,
       });
       return NextResponse.json({ url: blob.url });
     }
@@ -35,11 +39,15 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { error: "Upload nao configurado na producao (falta BLOB_READ_WRITE_TOKEN)." },
+      {
+        error:
+          "Upload nao configurado na producao (falta BLOB_READ_WRITE_TOKEN ou BLOB1_READ_WRITE_TOKEN).",
+      },
       { status: 500 },
     );
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro inesperado no upload.";
     console.error("Upload falhou:", error);
-    return NextResponse.json({ error: "Falha no upload." }, { status: 500 });
+    return NextResponse.json({ error: `Falha no upload: ${message}` }, { status: 500 });
   }
 }

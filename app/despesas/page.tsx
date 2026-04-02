@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams } from "next/navigation";
 import Cropper, { type Area } from "react-easy-crop";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
+import { uploadReceiptImage } from "@/lib/receipt-upload";
 import { TopNav } from "@/components/top-nav";
 import type { CurrencyCode, ExpenseType } from "@/lib/mock-data";
 
@@ -371,20 +372,7 @@ function DespesasPageContent() {
     try {
       let receiptImageUrl: string | null = null;
       if (uploadFile) {
-        const formData = new FormData();
-        formData.append("file", uploadFile);
-
-        const response = await fetch("/api/uploads", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = (await response.json()) as { url?: string; error?: string };
-
-        if (!response.ok || !result.url) {
-          throw new Error(result.error ?? "Falha no upload.");
-        }
-        receiptImageUrl = result.url;
+        receiptImageUrl = await uploadReceiptImage(uploadFile);
       }
 
       let cat = uploadCategory || categoryOptions[uploadType][0] || "Geral";
@@ -444,7 +432,15 @@ function DespesasPageContent() {
         setUploadDate(`${y}-${m}-${day}`);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao enviar recibo.";
+      console.error("Erro ao enviar recibo:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : error && typeof error === "object" && "message" in error
+              ? String((error as { message: unknown }).message)
+              : "Erro ao enviar recibo.";
       setUploadError(message);
     } finally {
       setUploading(false);
