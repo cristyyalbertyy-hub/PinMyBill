@@ -2,7 +2,6 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Cropper, { type Area } from "react-easy-crop";
 import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { uploadReceiptImage } from "@/lib/receipt-upload";
 import { TopNav } from "@/components/top-nav";
@@ -22,49 +21,6 @@ type DbHealth = {
     provider: "missing" | "local" | "neon" | "remote";
   };
 };
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Falha ao ler imagem para recorte."));
-    img.src = src;
-  });
-}
-
-async function buildCroppedFile(
-  sourceUrl: string,
-  area: Area,
-  fileNameBase: string,
-): Promise<File> {
-  const image = await loadImage(sourceUrl);
-  const canvas = document.createElement("canvas");
-  const width = Math.max(1, Math.round(area.width));
-  const height = Math.max(1, Math.round(area.height));
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Falha ao inicializar canvas.");
-
-  ctx.drawImage(
-    image,
-    Math.round(area.x),
-    Math.round(area.y),
-    width,
-    height,
-    0,
-    0,
-    width,
-    height,
-  );
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
-  if (!blob) throw new Error("Falha ao criar imagem recortada.");
-
-  const safeBase = fileNameBase.replace(/\.[^/.]+$/, "");
-  return new File([blob], `${safeBase}-recorte.jpg`, { type: "image/jpeg" });
-}
 
 function DespesasPageContent() {
   const searchParams = useSearchParams();
@@ -100,14 +56,6 @@ function DespesasPageContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
-  const [cropOpen, setCropOpen] = useState(false);
-  const [cropSourceUrl, setCropSourceUrl] = useState<string | null>(null);
-  const [cropSourceName, setCropSourceName] = useState("recibo");
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1.2);
-  const [cropAreaPixels, setCropAreaPixels] = useState<Area | null>(null);
-  const [cropSaving, setCropSaving] = useState(false);
-  const [cropError, setCropError] = useState<string | null>(null);
 
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -117,70 +65,26 @@ function DespesasPageContent() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const quickCameraTriggeredRef = useRef(false);
-  const cropObjectUrlRef = useRef<string | null>(null);
-  const cropAreaPixelsRef = useRef<Area | null>(null);
   const uploadPreviewUrlRef = useRef<string | null>(null);
-
-  const openCropForFile = useCallback((file: File | null) => {
-    if (!file) return;
-    if (cropObjectUrlRef.current) {
-      URL.revokeObjectURL(cropObjectUrlRef.current);
-      cropObjectUrlRef.current = null;
-    }
-    const nextUrl = URL.createObjectURL(file);
-    cropObjectUrlRef.current = nextUrl;
-    setCropSourceUrl(nextUrl);
-    setCropSourceName(file.name || "recibo");
-    setCrop({ x: 0, y: 0 });
-    setZoom(1.2);
-    setCropAreaPixels(null);
-    cropAreaPixelsRef.current = null;
-    setCropError(null);
-    setCropOpen(true);
-  }, []);
-
-  const closeCropModal = useCallback(() => {
-    setCropOpen(false);
-    setCropError(null);
-    setCropSaving(false);
-    setZoom(1.2);
-    setCropAreaPixels(null);
-    cropAreaPixelsRef.current = null;
-    if (cropObjectUrlRef.current) {
-      URL.revokeObjectURL(cropObjectUrlRef.current);
-      cropObjectUrlRef.current = null;
-    }
-    setCropSourceUrl(null);
-  }, []);
 
   function handleCameraImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-    openCropForFile(file);
+    if (file) {
+      setUploadFile(file);
+      setUploadError(null);
+    }
     if (galleryInputRef.current) galleryInputRef.current.value = "";
+    event.target.value = "";
   }
 
   function handleGalleryImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
-    openCropForFile(file);
+    if (file) {
+      setUploadFile(file);
+      setUploadError(null);
+    }
     if (cameraInputRef.current) cameraInputRef.current.value = "";
-  }
-
-  async function applyCrop() {
-    const finalArea = cropAreaPixelsRef.current ?? cropAreaPixels;
-    if (!cropSourceUrl || !finalArea) {
-      setCropError("Ajusta a foto (com zoom) para recortar a fatura.");
-      return;
-    }
-    setCropSaving(true);
-    setCropError(null);
-    try {
-      const cropped = await buildCroppedFile(cropSourceUrl, finalArea, cropSourceName);
-      setUploadFile(cropped);
-      closeCropModal();
-    } catch (e) {
-      setCropError(e instanceof Error ? e.message : "Falha ao recortar imagem.");
-      setCropSaving(false);
-    }
+    event.target.value = "";
   }
 
   const loadAll = useCallback(async () => {
@@ -255,7 +159,6 @@ function DespesasPageContent() {
 
   useEffect(
     () => () => {
-      if (cropObjectUrlRef.current) URL.revokeObjectURL(cropObjectUrlRef.current);
       if (uploadPreviewUrlRef.current) URL.revokeObjectURL(uploadPreviewUrlRef.current);
     },
     [],
@@ -582,8 +485,8 @@ function DespesasPageContent() {
                     <div className="max-w-[14rem] overflow-hidden rounded-xl border border-stone-200/80 bg-white/80 p-1 shadow-sm dark:border-stone-700 dark:bg-stone-900/60">
                       <img
                         src={uploadPreviewUrl}
-                        alt="Pre-visualizacao da imagem recortada"
-                        className="h-auto w-full rounded-lg object-contain"
+                        alt="Pre-visualizacao do recibo"
+                        className="h-auto w-full max-h-64 rounded-lg object-contain"
                       />
                     </div>
                   ) : null}
@@ -591,16 +494,7 @@ function DespesasPageContent() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => openCropForFile(uploadFile)}
-                        className="pin-btn-secondary min-h-10 rounded-xl px-3 py-2 text-sm"
-                        aria-label="Recortar de novo a imagem"
-                      >
-                        Recortar de novo
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => {
-                          if (cropOpen) closeCropModal();
                           setUploadFile(null);
                           setUploadError(null);
                         }}
@@ -827,73 +721,6 @@ function DespesasPageContent() {
                 <button
                   type="button"
                   onClick={closeNewClientModal}
-                  className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {cropOpen && cropSourceUrl ? (
-          <div
-            className="fixed inset-0 z-[75] flex items-end justify-center bg-stone-900/60 backdrop-blur-[2px] md:items-center"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="crop-title"
-          >
-            <div className="pin-card w-full max-w-2xl rounded-t-3xl border-t-4 border-t-pin-warm p-4 shadow-2xl md:rounded-2xl md:p-6">
-              <h3 id="crop-title" className="text-lg font-bold text-pin-ink">
-                Ajustar foto da fatura
-              </h3>
-              <p className="mt-1 text-sm text-pin-muted">
-                Move e aproxima (zoom) para ficar apenas com a fatura no enquadramento.
-              </p>
-              <div className="relative mt-4 h-[50vh] min-h-[18rem] overflow-hidden rounded-2xl bg-stone-900">
-                <Cropper
-                  image={cropSourceUrl}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={3 / 4}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={(_, areaPixels) => {
-                    setCropAreaPixels(areaPixels);
-                    cropAreaPixelsRef.current = areaPixels;
-                  }}
-                  showGrid={false}
-                  objectFit="contain"
-                />
-              </div>
-              <label className="mt-4 flex flex-col gap-2 text-sm font-medium text-pin-muted">
-                Zoom
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                />
-                <span className="text-xs text-pin-soft">Dica: para trim real, usa zoom acima de 1.0.</span>
-              </label>
-              {cropError ? (
-                <p className="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{cropError}</p>
-              ) : null}
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={cropSaving}
-                  onClick={() => void applyCrop()}
-                  className="pin-btn-primary min-h-12 flex-1 rounded-xl px-4 py-3 text-sm"
-                >
-                  {cropSaving ? "A recortar..." : "Usar recorte"}
-                </button>
-                <button
-                  type="button"
-                  disabled={cropSaving}
-                  onClick={closeCropModal}
                   className="pin-btn-secondary min-h-12 rounded-xl px-4 py-3 text-sm"
                 >
                   Cancelar
