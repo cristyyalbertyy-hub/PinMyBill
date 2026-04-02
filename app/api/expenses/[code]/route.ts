@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { ExpenseType, ExpenseStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 type Params = { params: Promise<{ code: string }> };
 
 export async function PATCH(request: Request, context: Params) {

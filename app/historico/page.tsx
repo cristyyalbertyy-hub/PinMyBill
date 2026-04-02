@@ -67,13 +67,13 @@ export default function HistoricoPage() {
 
     try {
       const [ex, cat, cl] = await Promise.all([
-        fetchJsonWithTimeout<ExpenseItem[]>("/api/expenses", 10000),
+        fetchJsonWithTimeout<ExpenseItem[]>("/api/expenses", 28000),
         fetchJsonWithTimeout<{
           pessoal: { name: string }[];
           empresa: { name: string }[];
           cliente: { name: string }[];
-        }>("/api/categories", 10000),
-        fetchJsonWithTimeout<{ name: string }[]>("/api/clients", 10000),
+        }>("/api/categories", 28000),
+        fetchJsonWithTimeout<{ name: string }[]>("/api/clients", 28000),
       ]);
 
       setItems(ex);
@@ -99,7 +99,7 @@ export default function HistoricoPage() {
 
   const refreshCategoriesOnly = useCallback(async () => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 28000);
     try {
       const res = await fetch("/api/categories", { signal: controller.signal });
       if (!res.ok) return;
@@ -122,7 +122,7 @@ export default function HistoricoPage() {
 
   const refreshClientsOnly = useCallback(async () => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
+    const timer = setTimeout(() => controller.abort(), 28000);
     try {
       const res = await fetch("/api/clients", { signal: controller.signal });
       if (!res.ok) return;

@@ -206,8 +206,8 @@ function DespesasPageContent() {
           pessoal: { name: string }[];
           empresa: { name: string }[];
           cliente: { name: string }[];
-        }>("/api/categories", 10000),
-        fetchJsonWithTimeout<{ name: string }[]>("/api/clients", 10000),
+        }>("/api/categories", 28000),
+        fetchJsonWithTimeout<{ name: string }[]>("/api/clients", 28000),
       ]);
       setCategoryNames({
         pessoal: catRes.pessoal.map((r) => r.name),

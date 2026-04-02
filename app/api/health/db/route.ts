@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 function parseDbTarget(urlRaw: string | undefined) {
   if (!urlRaw) {
     return {

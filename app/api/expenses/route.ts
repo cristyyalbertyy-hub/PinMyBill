@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { ExpenseType, ExpenseStatus } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+/** Plano Pro: até 60s; Hobby continua limitado pelo Vercel (~10s). */
+export const maxDuration = 60;
+
 function serializeExpense(e: {
   code: string;
   merchant: string;
