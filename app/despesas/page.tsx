@@ -238,6 +238,26 @@ function DespesasPageContent() {
     setNewClientSaving(false);
   }
 
+  function resetReceiptForm() {
+    setUploadError(null);
+    setUploadFile(null);
+    setUploadMerchant("");
+    setUploadAmount("");
+    setUploadCurrency("AED");
+    setUploadOtherCurrency("");
+    setUploadOtherCategoryName("");
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    setUploadDate(`${y}-${m}-${day}`);
+    const list = categoryNames[uploadType];
+    setUploadCategory(list[0] ?? "");
+    if (clientNames.length) {
+      setUploadClient((prev) => (clientNames.includes(prev) ? prev : clientNames[0] ?? ""));
+    }
+  }
+
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (uploadCurrency === OTHER_CURRENCY_SENTINEL && !uploadOtherCurrency.trim()) {
@@ -647,7 +667,15 @@ function DespesasPageContent() {
                 />
               </label>
             ) : null}
-            <div className="flex items-end justify-end md:col-span-3">
+            <div className="flex flex-wrap items-end justify-end gap-3 md:col-span-3">
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={resetReceiptForm}
+                className="pin-btn-secondary min-h-12 touch-manipulation rounded-full px-6 py-3 text-base md:py-2.5 md:text-sm"
+              >
+                {t("common.cancel")}
+              </button>
               <button
                 type="submit"
                 disabled={uploading}
