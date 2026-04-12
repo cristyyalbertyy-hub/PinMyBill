@@ -1,12 +1,26 @@
-import { auth } from "@/auth";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-/** Só páginas: as rotas /api/* devolvem 401 no handler, não redirecionam para HTML. */
-export default auth((req) => {
+/**
+ * Middleware leve para o limite de 1 MB da Vercel Hobby: não importar `auth()` de @/auth
+ * (isso puxava Prisma + stack grande para a Edge Function).
+ * A sessão JWT continua a ser validada com AUTH_SECRET; as APIs usam `auth()` em Node.
+ */
+export async function middleware(req: NextRequest) {
+  const secret = process.env.AUTH_SECRET;
   const path = req.nextUrl.pathname;
-  const isLoggedIn = Boolean(req.auth);
-
   const isPublic = path.startsWith("/login") || path.startsWith("/register");
+
+  let isLoggedIn = false;
+  if (secret) {
+    try {
+      const token = await getToken({ req, secret });
+      isLoggedIn = Boolean(token);
+    } catch {
+      isLoggedIn = false;
+    }
+  }
 
   if (!isLoggedIn && !isPublic) {
     const login = new URL("/login", req.nextUrl.origin);
@@ -19,7 +33,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [
