@@ -14,10 +14,9 @@ function requestIsHttps(req: NextRequest): boolean {
 
 function shouldSkipAuthMiddleware(path: string): boolean {
   return (
-    path.startsWith("/api/") ||
-    path === "/api" ||
-    path.startsWith("/_next/") ||
-    path.startsWith("/receipts/") ||
+    path.startsWith("/api") ||
+    path.startsWith("/_next") ||
+    path.startsWith("/receipts") ||
     path === "/favicon.ico" ||
     path.startsWith("/icons/") ||
     path.startsWith("/brand/") ||
@@ -35,11 +34,7 @@ async function readSessionToken(req: NextRequest, secret: string) {
   return token;
 }
 
-/**
- * Middleware leve para o limite de 1 MB da Vercel Hobby: não importar `auth()` de @/auth.
- * Sem `matcher` restritivo com `/` extra (que em alguns setups quebra o `next dev`).
- * O bypass no início evita API, _next e ficheiros estáticos.
- */
+/** Middleware leve: sem `auth()` de @/auth (limite Edge). Ver nota no fim do ficheiro. */
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
@@ -73,12 +68,8 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: [
-    /*
-     * Inclui a raiz `/` (segmento vazio) sem um segundo matcher só com "/".
-     * Exclui API, _next, uploads e extensões estáticas.
-     */
-    "/((?!api(?:/|$)|receipts/|_next/static|_next/image|favicon\\.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)?",
-  ],
-};
+/**
+ * Sem `export const config` / matcher: o middleware corre em todos os pedidos; o bypass no
+ * início evita `_next`, API e estáticos. A raiz `/` fica protegida (regex no matcher falhava
+ * no dev). Se o bundle Edge ultrapassar 1 MB na Vercel, volta um `matcher` mínimo ou corta deps.
+ */
