@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
 /** Só páginas: as rotas /api/* devolvem 401 no handler, não redirecionam para HTML. */
 export default auth((req) => {
@@ -10,14 +11,14 @@ export default auth((req) => {
   if (!isLoggedIn && !isPublic) {
     const login = new URL("/login", req.nextUrl.origin);
     login.searchParams.set("callbackUrl", path + req.nextUrl.search);
-    return Response.redirect(login);
+    return NextResponse.redirect(login);
   }
 
   if (isLoggedIn && (path === "/login" || path === "/register")) {
-    return Response.redirect(new URL("/", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
-  return undefined;
+  return NextResponse.next();
 });
 
 export const config = {
