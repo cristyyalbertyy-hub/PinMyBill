@@ -2,7 +2,9 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/** Em HTTPS o Auth.js usa o prefixo `__Secure-` no nome do cookie; `getToken` tem de espelhar isso. */
+const STATIC_EXT = /\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$/i;
+
+/** Em HTTPS o Auth.js usa o prefixo `__Secure-` no nome do cookie. */
 function requestIsHttps(req: NextRequest): boolean {
   const forwarded = req.headers.get("x-forwarded-proto");
   if (forwarded === "https") return true;
@@ -10,25 +12,48 @@ function requestIsHttps(req: NextRequest): boolean {
   return req.nextUrl.protocol === "https:";
 }
 
+function shouldSkipAuthMiddleware(path: string): boolean {
+  return (
+    path.startsWith("/api/") ||
+    path === "/api" ||
+    path.startsWith("/_next/") ||
+    path.startsWith("/receipts/") ||
+    path === "/favicon.ico" ||
+    path.startsWith("/icons/") ||
+    path.startsWith("/brand/") ||
+    STATIC_EXT.test(path)
+  );
+}
+
+/** Lê o JWT da sessão; tenta o nome de cookie correto para HTTP vs HTTPS. */
+async function readSessionToken(req: NextRequest, secret: string) {
+  const https = requestIsHttps(req);
+  let token = await getToken({ req, secret, secureCookie: https });
+  if (!token) {
+    token = await getToken({ req, secret, secureCookie: !https });
+  }
+  return token;
+}
+
 /**
- * Middleware leve para o limite de 1 MB da Vercel Hobby: não importar `auth()` de @/auth
- * (isso puxava Prisma + stack grande para a Edge Function).
- * A sessão JWT continua a ser validada com AUTH_SECRET; as APIs usam `auth()` em Node.
+ * Middleware leve para o limite de 1 MB da Vercel Hobby: não importar `auth()` de @/auth.
+ * Sem `matcher` restritivo com `/` extra (que em alguns setups quebra o `next dev`).
+ * O bypass no início evita API, _next e ficheiros estáticos.
  */
 export async function middleware(req: NextRequest) {
-  const secret = process.env.AUTH_SECRET;
   const path = req.nextUrl.pathname;
+
+  if (shouldSkipAuthMiddleware(path)) {
+    return NextResponse.next();
+  }
+
+  const secret = process.env.AUTH_SECRET;
   const isPublic = path.startsWith("/login") || path.startsWith("/register");
 
   let isLoggedIn = false;
   if (secret) {
     try {
-      const token = await getToken({
-        req,
-        secret,
-        secureCookie: requestIsHttps(req),
-      });
-      // Exige `sub` para não tratar payloads vazios / inválidos como sessão.
+      const token = await readSessionToken(req, secret);
       isLoggedIn = Boolean(token?.sub);
     } catch {
       isLoggedIn = false;
@@ -50,8 +75,10 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // A raiz `/` por vezes não corresponde só ao padrão com `.*` — sem isto a home ficava sem middleware.
-    "/",
-    "/((?!api/|receipts/|_next/static|_next/image|favicon.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    /*
+     * Inclui a raiz `/` (segmento vazio) sem um segundo matcher só com "/".
+     * Exclui API, _next, uploads e extensões estáticas.
+     */
+    "/((?!api(?:/|$)|receipts/|_next/static|_next/image|favicon\\.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)?",
   ],
 };
