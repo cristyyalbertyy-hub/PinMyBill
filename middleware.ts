@@ -24,7 +24,7 @@ function shouldSkipAuthMiddleware(path: string): boolean {
   );
 }
 
-/** Lê o JWT da sessão; tenta o nome de cookie correto para HTTP vs HTTPS. */
+/** Lê o JWT da sessão; tenta o nome de cookie correto para HTTP vs HTTPS (Vercel). */
 async function readSessionToken(req: NextRequest, secret: string) {
   const https = requestIsHttps(req);
   let token = await getToken({ req, secret, secureCookie: https });
@@ -34,7 +34,16 @@ async function readSessionToken(req: NextRequest, secret: string) {
   return token;
 }
 
-/** Middleware leve: sem `auth()` de @/auth (limite Edge). Ver nota no fim do ficheiro. */
+/**
+ * Proteção de sessão sem importar `auth()` de @/auth (limite Edge na Vercel).
+ *
+ * O problema “preso no login” na Vercel foi sobretudo: (1) `callbackUrl` relativo no
+ * `signIn` e (2) `getToken` sem `secureCookie` em HTTPS — não o matcher em si.
+ *
+ * Matcher: `"/"` só a raiz; segundo padrão cobre `/login`, `/despesas`, etc., e exclui
+ * `api`, `_next`, uploads e ficheiros estáticos. Assim não corremos middleware em *todos*
+ * os pedidos (o que no `next dev` podia estragar o fluxo de login / RSC).
+ */
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
@@ -68,8 +77,9 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-/**
- * Sem `export const config` / matcher: o middleware corre em todos os pedidos; o bypass no
- * início evita `_next`, API e estáticos. A raiz `/` fica protegida (regex no matcher falhava
- * no dev). Se o bundle Edge ultrapassar 1 MB na Vercel, volta um `matcher` mínimo ou corta deps.
- */
+export const config = {
+  matcher: [
+    "/",
+    "/((?!api(?:/|$)|receipts/|_next/|favicon\\.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).+)",
+  ],
+};
