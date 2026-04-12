@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/require-user";
 import type { ExpenseType } from "@prisma/client";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: Params) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const { id } = await context.params;
     const body = (await request.json()) as { name: string };
@@ -13,8 +17,8 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Nome obrigatorio." }, { status: 400 });
     }
 
-    const existing = await prisma.category.findUnique({
-      where: { id },
+    const existing = await prisma.category.findFirst({
+      where: { id, userId: authz.userId },
       select: { name: true, scope: true },
     });
     if (!existing) {
@@ -29,9 +33,12 @@ export async function PATCH(request: Request, context: Params) {
         where: { id },
         data: { name },
       }),
-      // Atualiza as despesas que guardaram a categoria pelo nome (string).
       prisma.expense.updateMany({
-        where: { category: oldName, type: scope },
+        where: {
+          userId: authz.userId,
+          category: oldName,
+          type: scope,
+        },
         data: { category: name },
       }),
     ]);
@@ -43,11 +50,14 @@ export async function PATCH(request: Request, context: Params) {
 }
 
 export async function DELETE(_request: Request, context: Params) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const { id } = await context.params;
 
-    const existing = await prisma.category.findUnique({
-      where: { id },
+    const existing = await prisma.category.findFirst({
+      where: { id, userId: authz.userId },
       select: { name: true, scope: true },
     });
     if (!existing) {
@@ -56,7 +66,11 @@ export async function DELETE(_request: Request, context: Params) {
 
     const scope = existing.scope.toLowerCase() as ExpenseType;
     const inUse = await prisma.expense.count({
-      where: { category: existing.name, type: scope },
+      where: {
+        userId: authz.userId,
+        category: existing.name,
+        type: scope,
+      },
     });
 
     if (inUse > 0) {

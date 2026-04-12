@@ -20,6 +20,7 @@ async function uploadViaApi(file: File): Promise<string> {
   const response = await fetch("/api/uploads", {
     method: "POST",
     body: formData,
+    credentials: "include",
   });
 
   let result: UploadResponse | null = null;

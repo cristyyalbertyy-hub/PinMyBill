@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/require-user";
 import type { CategoryScope } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET() {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
-    const rows = await prisma.category.findMany({ orderBy: [{ scope: "asc" }, { name: "asc" }] });
+    const rows = await prisma.category.findMany({
+      where: { userId: authz.userId },
+      orderBy: [{ scope: "asc" }, { name: "asc" }],
+    });
     const grouped = {
       pessoal: [] as { id: string; name: string }[],
       empresa: [] as { id: string; name: string }[],
@@ -24,6 +31,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const body = (await request.json()) as { scope: CategoryScope; name: string };
     const name = body.name?.trim();
@@ -31,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nome e ambito obrigatorios." }, { status: 400 });
     }
     const created = await prisma.category.create({
-      data: { scope: body.scope, name },
+      data: { userId: authz.userId, scope: body.scope, name },
     });
     return NextResponse.json({ id: created.id, name: created.name, scope: created.scope });
   } catch {

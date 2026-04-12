@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/require-user";
 import type { ExpenseType, ExpenseStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,14 @@ function serializeExpense(e: {
 }
 
 export async function GET() {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
-    const list = await prisma.expense.findMany({ orderBy: { date: "desc" } });
+    const list = await prisma.expense.findMany({
+      where: { userId: authz.userId },
+      orderBy: { date: "desc" },
+    });
     return NextResponse.json(list.map(serializeExpense));
   } catch {
     return NextResponse.json({ error: "Falha ao ler despesas." }, { status: 500 });
@@ -42,6 +49,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const body = (await request.json()) as {
       merchant: string;
@@ -61,6 +71,7 @@ export async function POST(request: Request) {
     const created = await prisma.expense.create({
       data: {
         code,
+        userId: authz.userId,
         merchant: body.merchant,
         amount: body.amount,
         currency: body.currency,

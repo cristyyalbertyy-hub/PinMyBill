@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
 
@@ -16,6 +17,7 @@ const links = [
 export function TopNav() {
   const pathname = usePathname();
   const t = useT();
+  const { data: session } = useSession();
 
   return (
     <div className="mb-6 hidden w-full flex-wrap items-center justify-between gap-3 md:mb-8 md:flex">
@@ -38,7 +40,18 @@ export function TopNav() {
           );
         })}
       </nav>
-      <LanguageSwitcher variant="inline" />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {session ? (
+          <button
+            type="button"
+            onClick={() => void signOut({ callbackUrl: "/login" })}
+            className="min-h-9 rounded-full px-3 py-1.5 text-xs font-semibold text-pin-muted ring-1 ring-stone-200/90 transition hover:bg-pin-teal-soft hover:text-pin-ink dark:ring-stone-600 dark:hover:bg-stone-800"
+          >
+            {t("auth.signOut")}
+          </button>
+        ) : null}
+        <LanguageSwitcher variant="inline" />
+      </div>
     </div>
   );
 }

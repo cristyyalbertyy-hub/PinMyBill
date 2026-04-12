@@ -1,0 +1,102 @@
+"use client";
+
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
+import { useT } from "@/lib/i18n/context";
+
+export default function RegisterPage() {
+  const t = useT();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? t("auth.errorGeneric"));
+        setPending(false);
+        return;
+      }
+
+      const sign = await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        redirect: false,
+        callbackUrl: "/",
+      });
+      if (sign?.error) {
+        setError(t("auth.errorCredentials"));
+        setPending(false);
+        return;
+      }
+      window.location.href = sign?.url ?? "/";
+    } catch {
+      setError(t("auth.errorGeneric"));
+      setPending(false);
+    }
+  }
+
+  return (
+    <main className="pin-page flex min-h-[70vh] flex-col justify-center px-4 py-10 md:px-10">
+      <div className="mx-auto w-full max-w-md">
+        <h1 className="mb-6 text-2xl font-extrabold tracking-tight text-pin-ink md:text-3xl">
+          {t("auth.registerTitle")}
+        </h1>
+        <form onSubmit={(e) => void onSubmit(e)} className="pin-card space-y-4 p-6">
+          <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+            {t("auth.email")}
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pin-field"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+            {t("auth.password")}
+            <input
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pin-field"
+            />
+            <span className="text-xs font-normal text-pin-soft">{t("auth.passwordHint")}</span>
+          </label>
+          {error ? <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={pending}
+            className="pin-btn-primary min-h-12 w-full rounded-xl py-3 text-sm font-semibold"
+          >
+            {pending ? "…" : t("auth.submitRegister")}
+          </button>
+          <p className="text-center text-sm text-pin-muted">
+            {t("auth.hasAccount")}{" "}
+            <Link href="/login" className="font-semibold text-pin-accent underline-offset-2 hover:underline">
+              {t("auth.goLogin")}
+            </Link>
+          </p>
+        </form>
+      </div>
+    </main>
+  );
+}

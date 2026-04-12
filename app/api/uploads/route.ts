@@ -3,8 +3,12 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { getBlobReadWriteToken } from "@/lib/blob-token";
+import { requireUserId } from "@/lib/require-user";
 
 export async function POST(request: Request) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");

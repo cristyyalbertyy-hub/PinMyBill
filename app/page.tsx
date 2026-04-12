@@ -4,7 +4,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { DashboardIllustration } from "@/components/dashboard-illustration";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { LegacyDataBanner } from "@/components/legacy-data-banner";
 import { useT } from "@/lib/i18n/context";
+import { signOut, useSession } from "next-auth/react";
 
 const shortcuts = [
   {
@@ -29,6 +31,7 @@ const shortcuts = [
 
 export default function Home() {
   const t = useT();
+  const { data: session } = useSession();
 
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
@@ -114,6 +117,20 @@ export default function Home() {
             </Link>
           ))}
         </section>
+
+        <LegacyDataBanner />
+
+        {session ? (
+          <p className="mt-8 text-center md:hidden">
+            <button
+              type="button"
+              onClick={() => void signOut({ callbackUrl: "/login" })}
+              className="text-sm font-semibold text-pin-muted underline-offset-2 hover:text-pin-ink hover:underline"
+            >
+              {t("auth.signOut")}
+            </button>
+          </p>
+        ) : null}
       </div>
     </main>
   );

@@ -18,20 +18,24 @@ async function main() {
   ];
 
   for (const row of categoryData) {
-    await prisma.category.upsert({
-      where: { scope_name: { scope: row.scope, name: row.name } },
-      create: row,
-      update: {},
-    });
+    try {
+      await prisma.category.create({
+        data: { ...row, userId: null },
+      });
+    } catch {
+      /* duplicate or constraint */
+    }
   }
 
   const clientNames = ["Al Noor Events", "Doha Premium Weddings"];
   for (const name of clientNames) {
-    await prisma.client.upsert({
-      where: { name },
-      create: { name },
-      update: {},
-    });
+    try {
+      await prisma.client.create({
+        data: { name, userId: null },
+      });
+    } catch {
+      /* duplicate */
+    }
   }
 
   const expenses = [
@@ -88,7 +92,7 @@ async function main() {
   for (const e of expenses) {
     await prisma.expense.upsert({
       where: { code: e.code },
-      create: e,
+      create: { ...e, userId: null },
       update: {
         merchant: e.merchant,
         amount: e.amount,

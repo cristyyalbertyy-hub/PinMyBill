@@ -1,8 +1,12 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getBlobReadWriteToken } from "@/lib/blob-token";
+import { requireUserId } from "@/lib/require-user";
 
 export async function POST(request: Request): Promise<Response> {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   const token = getBlobReadWriteToken();
 
   if (!token) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/require-user";
 import type { ExpenseType, ExpenseStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -8,9 +9,20 @@ export const maxDuration = 60;
 type Params = { params: Promise<{ code: string }> };
 
 export async function PATCH(request: Request, context: Params) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const { code } = await context.params;
     const decoded = decodeURIComponent(code);
+
+    const owned = await prisma.expense.findFirst({
+      where: { code: decoded, userId: authz.userId },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+
     const body = (await request.json()) as Partial<{
       merchant: string;
       amount: number;
@@ -57,9 +69,20 @@ export async function PATCH(request: Request, context: Params) {
 }
 
 export async function DELETE(_request: Request, context: Params) {
+  const authz = await requireUserId();
+  if (!authz.ok) return authz.response;
+
   try {
     const { code } = await context.params;
     const decoded = decodeURIComponent(code);
+
+    const owned = await prisma.expense.findFirst({
+      where: { code: decoded, userId: authz.userId },
+    });
+    if (!owned) {
+      return NextResponse.json({ error: "Not found." }, { status: 404 });
+    }
+
     await prisma.expense.delete({ where: { code: decoded } });
     return NextResponse.json({ ok: true });
   } catch {

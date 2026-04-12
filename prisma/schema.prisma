@@ -24,21 +24,43 @@ enum CategoryScope {
   cliente
 }
 
-model Category {
-  id    String        @id @default(cuid())
-  scope CategoryScope
-  name  String
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@unique([scope, name])
+  categories Category[]
+  clients    Client[]
+  expenses   Expense[]
+}
+
+model Category {
+  id     String        @id @default(cuid())
+  userId String?
+  user   User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope  CategoryScope
+  name   String
+
+  @@unique([userId, scope, name])
+  @@index([userId])
 }
 
 model Client {
-  id   String @id @default(cuid())
-  name String @unique
+  id     String @id @default(cuid())
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name   String
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Expense {
   code            String        @id
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   merchant        String
   amount          Decimal       @db.Decimal(12, 2)
   currency        String
@@ -50,4 +72,6 @@ model Expense {
   receiptImageUrl String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
 }
