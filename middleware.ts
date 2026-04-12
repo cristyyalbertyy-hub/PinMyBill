@@ -34,16 +34,7 @@ async function readSessionToken(req: NextRequest, secret: string) {
   return token;
 }
 
-/**
- * Proteção de sessão sem importar `auth()` de @/auth (limite Edge na Vercel).
- *
- * O problema “preso no login” na Vercel foi sobretudo: (1) `callbackUrl` relativo no
- * `signIn` e (2) `getToken` sem `secureCookie` em HTTPS — não o matcher em si.
- *
- * Matcher: `"/"` só a raiz; segundo padrão cobre `/login`, `/despesas`, etc., e exclui
- * `api`, `_next`, uploads e ficheiros estáticos. Assim não corremos middleware em *todos*
- * os pedidos (o que no `next dev` podia estragar o fluxo de login / RSC).
- */
+/** Proteção de sessão sem `auth()` de @/auth (limite Edge na Vercel). */
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
@@ -70,16 +61,30 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (isLoggedIn && (path === "/login" || path === "/register")) {
+  const forceAuthPage = req.nextUrl.searchParams.get("force") === "1";
+  if (
+    isLoggedIn &&
+    (path === "/login" || path === "/register") &&
+    !forceAuthPage
+  ) {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
   return NextResponse.next();
 }
 
+/**
+ * Rotas explícitas — o matcher com lookahead regex falhava em alguns ambientes e `/login`
+ * deixava de ser tratado como esperado.
+ */
 export const config = {
   matcher: [
     "/",
-    "/((?!api(?:/|$)|receipts/|_next/|favicon\\.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).+)",
+    "/login",
+    "/register",
+    "/categorias/:path*",
+    "/despesas/:path*",
+    "/exportar/:path*",
+    "/historico/:path*",
   ],
 };
