@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useState } from "react";
+import { sameOriginCallbackUrl } from "@/lib/auth-callback-url";
 import { useT } from "@/lib/i18n/context";
 
 function LoginForm() {
   const t = useT();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = sameOriginCallbackUrl(searchParams.get("callbackUrl") ?? "/");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ function LoginForm() {
         redirect: false,
         callbackUrl,
       });
-      if (res?.error) {
+      if (!res?.ok || res?.error) {
         setError(t("auth.errorCredentials"));
         setPending(false);
         return;

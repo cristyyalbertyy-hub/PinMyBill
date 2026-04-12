@@ -2,6 +2,14 @@ import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+/** Em HTTPS o Auth.js usa o prefixo `__Secure-` no nome do cookie; `getToken` tem de espelhar isso. */
+function requestIsHttps(req: NextRequest): boolean {
+  const forwarded = req.headers.get("x-forwarded-proto");
+  if (forwarded === "https") return true;
+  if (forwarded === "http") return false;
+  return req.nextUrl.protocol === "https:";
+}
+
 /**
  * Middleware leve para o limite de 1 MB da Vercel Hobby: não importar `auth()` de @/auth
  * (isso puxava Prisma + stack grande para a Edge Function).
@@ -15,7 +23,11 @@ export async function middleware(req: NextRequest) {
   let isLoggedIn = false;
   if (secret) {
     try {
-      const token = await getToken({ req, secret });
+      const token = await getToken({
+        req,
+        secret,
+        secureCookie: requestIsHttps(req),
+      });
       isLoggedIn = Boolean(token);
     } catch {
       isLoggedIn = false;

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { sameOriginCallbackUrl } from "@/lib/auth-callback-url";
 import { useT } from "@/lib/i18n/context";
 
 export default function RegisterPage() {
@@ -36,14 +37,14 @@ export default function RegisterPage() {
         email: email.trim().toLowerCase(),
         password,
         redirect: false,
-        callbackUrl: "/",
+        callbackUrl: sameOriginCallbackUrl("/"),
       });
-      if (sign?.error) {
+      if (!sign?.ok || sign?.error) {
         setError(t("auth.errorCredentials"));
         setPending(false);
         return;
       }
-      window.location.href = sign?.url ?? "/";
+      window.location.href = sign?.url ?? sameOriginCallbackUrl("/");
     } catch {
       setError(t("auth.errorGeneric"));
       setPending(false);
