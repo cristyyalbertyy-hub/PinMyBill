@@ -28,7 +28,8 @@ export async function middleware(req: NextRequest) {
         secret,
         secureCookie: requestIsHttps(req),
       });
-      isLoggedIn = Boolean(token);
+      // Exige `sub` para não tratar payloads vazios / inválidos como sessão.
+      isLoggedIn = Boolean(token?.sub);
     } catch {
       isLoggedIn = false;
     }
@@ -49,6 +50,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // A raiz `/` por vezes não corresponde só ao padrão com `.*` — sem isto a home ficava sem middleware.
+    "/",
     "/((?!api/|receipts/|_next/static|_next/image|favicon.ico|icons/|brand/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
