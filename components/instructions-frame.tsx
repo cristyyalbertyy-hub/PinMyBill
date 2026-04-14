@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/context";
 import { useTheme } from "@/components/theme-provider";
+import { isAuthPublicPath } from "@/lib/auth-public-paths";
 
 function InstructionsBody() {
   const t = useT();
@@ -42,6 +44,8 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   const settingsTitleId = useId();
   const backupTitleId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const pathname = usePathname();
+  const hideFloatingActions = isAuthPublicPath(pathname);
   const t = useT();
   const {
     preference,
@@ -72,6 +76,16 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = prev;
     };
   }, [open, onKeyDown]);
+
+  useEffect(() => {
+    if (!hideFloatingActions) return;
+    setOpen(false);
+    setSettingsOpen(false);
+    setBackupOpen(false);
+    setShowImportPicker(false);
+    setSelectedBackupFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [hideFloatingActions]);
 
   async function onExportBackup() {
     try {
@@ -120,6 +134,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+      {!hideFloatingActions ? (
       <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex items-center gap-2 md:bottom-6">
         <button
           type="button"
@@ -152,7 +167,8 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
         ?
       </button>
       </div>
-      {open ? (
+      ) : null}
+      {!hideFloatingActions && open ? (
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-6"
           role="presentation"
@@ -187,7 +203,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : null}
-      {settingsOpen ? (
+      {!hideFloatingActions && settingsOpen ? (
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-6"
           role="presentation"
@@ -336,7 +352,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       ) : null}
-      {backupOpen ? (
+      {!hideFloatingActions && backupOpen ? (
         <div
           className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-6"
           role="presentation"

@@ -9,6 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
+import { isAuthPublicPath } from "@/lib/auth-public-paths";
 import {
   DAY_BG_STORAGE_KEY,
   DAY_OVERLAY_COLOR_KEY,
@@ -113,6 +115,8 @@ function readStoredDayThemeStyle(): DayThemeStyle {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const authThemeLock = isAuthPublicPath(pathname);
   const [preference, setPreferenceState] = useState<ThemePreference>("system");
   const [dayBackground, setDayBackgroundState] = useState<DayBackgroundPreset>("default");
   const [dayOverlayColor, setDayOverlayColorState] = useState("#f97316");
@@ -144,9 +148,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     const root = document.documentElement;
-    root.classList.toggle("dark", resolved === "night");
-    root.style.colorScheme = resolved === "night" ? "dark" : "light";
-    if (resolved === "night") {
+    /** Login/registo: sempre aspeto noite; preferências ficam no localStorage para depois do login. */
+    const displayNight = authThemeLock || resolved === "night";
+    root.classList.toggle("dark", displayNight);
+    root.style.colorScheme = displayNight ? "dark" : "light";
+    if (displayNight) {
       root.removeAttribute("data-day-bg");
       root.removeAttribute("data-day-theme-style");
       root.style.removeProperty("--pin-day-overlay-rgb");
@@ -162,7 +168,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (rgb) root.style.setProperty("--pin-day-overlay-rgb", rgb);
       root.style.setProperty("--pin-day-overlay-opacity", String(dayOverlayOpacity));
     }
-  }, [hydrated, resolved, dayBackground, dayOverlayColor, dayOverlayOpacity, dayThemeStyle]);
+  }, [hydrated, authThemeLock, resolved, dayBackground, dayOverlayColor, dayOverlayOpacity, dayThemeStyle]);
 
   const setPreference = useCallback((value: ThemePreference) => {
     setPreferenceState(value);

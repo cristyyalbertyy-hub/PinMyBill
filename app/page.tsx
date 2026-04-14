@@ -36,8 +36,17 @@ export default function Home() {
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-3 flex justify-end md:mb-4">
-          <LanguageSwitcher variant="inline" className="hidden md:flex" />
+        <div className="mb-3 flex items-center justify-end gap-2 md:mb-4">
+          {session ? (
+            <button
+              type="button"
+              onClick={() => void signOut({ callbackUrl: "/login" })}
+              className="min-h-9 rounded-full px-3 py-1.5 text-xs font-semibold text-pin-muted ring-1 ring-stone-200/90 transition hover:bg-pin-teal-soft hover:text-pin-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/40 focus-visible:ring-offset-2 dark:ring-stone-600 dark:hover:bg-stone-800"
+            >
+              {t("auth.signOut")}
+            </button>
+          ) : null}
+          <LanguageSwitcher variant="inline" />
         </div>
         <header className="grid items-center gap-8 md:grid-cols-[1fr_min(42%,18rem)] md:gap-10">
           <div className="pin-dash-animate min-w-0">
@@ -123,17 +132,6 @@ export default function Home() {
 
         <LegacyDataBanner />
 
-        {session ? (
-          <p className="mt-8 text-center md:hidden">
-            <button
-              type="button"
-              onClick={() => void signOut({ callbackUrl: "/login" })}
-              className="text-sm font-semibold text-pin-muted underline-offset-2 hover:text-pin-ink hover:underline"
-            >
-              {t("auth.signOut")}
-            </button>
-          </p>
-        ) : null}
       </div>
     </main>
   );
