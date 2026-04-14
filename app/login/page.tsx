@@ -42,10 +42,14 @@ function LoginForm() {
   return (
     <main className="pin-page flex min-h-[70vh] flex-col justify-center px-4 py-10 md:px-10">
       <div className="mx-auto w-full max-w-md">
-        <h1 className="mb-6 text-2xl font-extrabold tracking-tight text-pin-ink md:text-3xl">
+        <h1 className="pin-hero-title mb-2 text-2xl font-extrabold tracking-tight text-balance md:text-3xl">
           {t("auth.loginTitle")}
         </h1>
-        <form onSubmit={(e) => void onSubmit(e)} className="pin-card space-y-4 p-6">
+        <p className="pin-lead mb-6 text-sm text-pin-muted">{t("auth.loginLead")}</p>
+        <form
+          onSubmit={(e) => void onSubmit(e)}
+          className="pin-card relative space-y-4 p-6 shadow-[0_22px_50px_-14px_rgba(13,148,136,0.18)] ring-2 ring-pin-accent/10 md:p-8 dark:shadow-[0_22px_50px_-14px_rgba(20,184,166,0.12)] dark:ring-teal-400/12"
+        >
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
             {t("auth.email")}
             <input

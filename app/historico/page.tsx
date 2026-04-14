@@ -203,9 +203,7 @@ export default function HistoricoPage() {
           </p>
         ) : null}
 
-        {!ready ? (
-          <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
-        ) : (
+        {ready ? (
           <>
             <div className="space-y-3 md:hidden">
               {items.length === 0 ? (
@@ -302,7 +300,7 @@ export default function HistoricoPage() {
               </table>
             </div>
           </>
-        )}
+        ) : null}
       </div>
 
       <EditExpenseModal

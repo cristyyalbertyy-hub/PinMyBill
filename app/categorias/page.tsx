@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { TopNav } from "@/components/top-nav";
+import { useT } from "@/lib/i18n/context";
 
 type CategoryRow = { id: string; name: string };
 type ClientRow = { id: string; name: string };
@@ -12,7 +13,82 @@ type GroupedCategories = {
   cliente: CategoryRow[];
 };
 
+type CategoryBlockProps = {
+  title: string;
+  scope: keyof GroupedCategories;
+  rows: CategoryRow[];
+  newValue: string;
+  setNewValue: (v: string) => void;
+  placeholder: string;
+  addButtonLabel: string;
+  deleteCategoryAria: string;
+  patchCategoryName: (id: string, name: string) => void | Promise<void>;
+  deleteCategory: (id: string, displayName: string) => void | Promise<void>;
+  addCategory: (scope: keyof GroupedCategories, name: string, reset: () => void) => void | Promise<void>;
+};
+
+/** Fora do page: se for definido dentro do pai, cada tecla remonta o bloco e o input perde o foco. */
+function CategoryBlock({
+  title,
+  scope,
+  rows,
+  newValue,
+  setNewValue,
+  placeholder,
+  addButtonLabel,
+  deleteCategoryAria,
+  patchCategoryName,
+  deleteCategory,
+  addCategory,
+}: CategoryBlockProps) {
+  return (
+    <div className="pin-card p-6">
+      <h2 className="text-lg font-bold text-pin-ink">{title}</h2>
+      <ul className="mt-4 space-y-2">
+        {rows.map((row) => (
+          <li key={row.id} className="flex gap-2">
+            <input
+              defaultValue={row.name}
+              onBlur={(e) => {
+                if (e.target.value.trim() !== row.name) {
+                  void patchCategoryName(row.id, e.target.value);
+                }
+              }}
+              className="pin-field bg-pin-teal-soft/50 dark:bg-stone-800/80"
+            />
+            <button
+              type="button"
+              onClick={() => void deleteCategory(row.id, row.name)}
+              aria-label={deleteCategoryAria}
+              title={deleteCategoryAria}
+              className="rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900"
+            >
+              🗑
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 flex gap-2">
+        <input
+          value={newValue}
+          onChange={(e) => setNewValue(e.target.value)}
+          placeholder={placeholder}
+          className="pin-field pin-field-orange-focus"
+        />
+        <button
+          type="button"
+          onClick={() => void addCategory(scope, newValue, () => setNewValue(""))}
+          className="pin-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm"
+        >
+          {addButtonLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function CategoriasPage() {
+  const t = useT();
   const [grouped, setGrouped] = useState<GroupedCategories>({
     pessoal: [],
     empresa: [],
@@ -32,15 +108,15 @@ export default function CategoriasPage() {
         fetch("/api/categories"),
         fetch("/api/clients"),
       ]);
-      if (!catRes.ok || !clRes.ok) throw new Error("Falha ao carregar dados.");
+      if (!catRes.ok || !clRes.ok) throw new Error("load fail");
       const cat = (await catRes.json()) as GroupedCategories;
       const cl = (await clRes.json()) as ClientRow[];
       setGrouped(cat);
       setClients(cl);
     } catch {
-      setLoadError("Nao foi possivel ligar a base de dados. Verifica DATABASE_URL e corre db:push.");
+      setLoadError(t("cat.loadError"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadAll();
@@ -60,15 +136,11 @@ export default function CategoriasPage() {
     }
 
     const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    globalThis.alert(data?.error ?? "Falha ao atualizar categoria.");
+    globalThis.alert(data?.error ?? t("confirm.updateCategoryFail"));
   }
 
   async function deleteCategory(id: string, displayName: string) {
-    if (
-      !globalThis.confirm(
-        `Remover a categoria "${displayName}"? Esta accao nao pode ser anulada.`,
-      )
-    ) {
+    if (!globalThis.confirm(t("confirm.deleteCategory", { name: displayName }))) {
       return;
     }
     const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
@@ -78,7 +150,7 @@ export default function CategoriasPage() {
     }
 
     const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    globalThis.alert(data?.error ?? "Falha ao apagar categoria.");
+    globalThis.alert(data?.error ?? t("cat.deleteCategoryFail"));
   }
 
   async function addCategory(scope: keyof GroupedCategories, name: string, reset: () => void) {
@@ -107,11 +179,7 @@ export default function CategoriasPage() {
   }
 
   async function deleteClient(id: string, displayName: string) {
-    if (
-      !globalThis.confirm(
-        `Remover o cliente "${displayName}"? Esta accao nao pode ser anulada.`,
-      )
-    ) {
+    if (!globalThis.confirm(t("confirm.deleteClient", { name: displayName }))) {
       return;
     }
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
@@ -132,68 +200,12 @@ export default function CategoriasPage() {
     }
   }
 
-  function CategoryBlock(props: {
-    title: string;
-    scope: keyof GroupedCategories;
-    rows: CategoryRow[];
-    newValue: string;
-    setNewValue: (v: string) => void;
-    placeholder: string;
-  }) {
-    const { title, scope, rows, newValue, setNewValue, placeholder } = props;
-    return (
-      <div className="pin-card p-6">
-        <h2 className="text-lg font-bold text-pin-ink">{title}</h2>
-        <ul className="mt-4 space-y-2">
-          {rows.map((row) => (
-            <li key={row.id} className="flex gap-2">
-              <input
-                defaultValue={row.name}
-                onBlur={(e) => {
-                  if (e.target.value.trim() !== row.name) {
-                    void patchCategoryName(row.id, e.target.value);
-                  }
-                }}
-                className="pin-field bg-pin-teal-soft/50 dark:bg-stone-800/80"
-              />
-              <button
-                type="button"
-                onClick={() => void deleteCategory(row.id, row.name)}
-                aria-label="Apagar categoria"
-                title="Apagar categoria"
-                className="rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900"
-              >
-                🗑
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4 flex gap-2">
-          <input
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            placeholder={placeholder}
-            className="pin-field pin-field-orange-focus"
-          />
-          <button
-            type="button"
-            onClick={() => void addCategory(scope, newValue, () => setNewValue(""))}
-            className="pin-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm"
-          >
-            Adicionar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">Categorias</h1>
-        <p className="pin-lead mb-8 text-base">
-          Subcategorias e clientes guardados na base de dados (Neon).
-        </p>
+        <h1 className="mb-6 text-3xl font-extrabold tracking-tight text-pin-ink md:mb-8 md:text-4xl">
+          {t("cat.title")}
+        </h1>
 
         <TopNav />
 
@@ -205,35 +217,48 @@ export default function CategoriasPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           <CategoryBlock
-            title="Pessoal"
+            title={t("cat.personal")}
             scope="pessoal"
             rows={grouped.pessoal}
             newValue={newPessoal}
             setNewValue={setNewPessoal}
-            placeholder="Nova categoria pessoal"
+            placeholder={t("cat.newPersonalPh")}
+            addButtonLabel={t("common.add")}
+            deleteCategoryAria={t("cat.deleteCatAria")}
+            patchCategoryName={patchCategoryName}
+            deleteCategory={deleteCategory}
+            addCategory={addCategory}
           />
           <CategoryBlock
-            title="Empresa"
+            title={t("cat.company")}
             scope="empresa"
             rows={grouped.empresa}
             newValue={newEmpresa}
             setNewValue={setNewEmpresa}
-            placeholder="Nova categoria empresa"
+            placeholder={t("cat.newCompanyPh")}
+            addButtonLabel={t("common.add")}
+            deleteCategoryAria={t("cat.deleteCatAria")}
+            patchCategoryName={patchCategoryName}
+            deleteCategory={deleteCategory}
+            addCategory={addCategory}
           />
           <CategoryBlock
-            title="Cliente (categorias)"
+            title={t("cat.clientCats")}
             scope="cliente"
             rows={grouped.cliente}
             newValue={newClienteCat}
             setNewValue={setNewClienteCat}
-            placeholder="Nova categoria para despesas de cliente"
+            placeholder={t("cat.newClientCatPh")}
+            addButtonLabel={t("common.add")}
+            deleteCategoryAria={t("cat.deleteCatAria")}
+            patchCategoryName={patchCategoryName}
+            deleteCategory={deleteCategory}
+            addCategory={addCategory}
           />
 
           <div className="pin-card border-l-4 border-l-pin-warm p-6">
-            <h2 className="text-lg font-bold text-pin-ink">Clientes</h2>
-            <p className="mt-1 text-sm text-pin-muted">
-              Nomes de clientes para exportacao e despesas tipo Cli.
-            </p>
+            <h2 className="text-lg font-bold text-pin-ink">{t("cat.clients")}</h2>
+            <p className="mt-1 text-sm text-pin-muted">{t("cat.clientCatsLead")}</p>
             <ul className="mt-4 space-y-2">
               {clients.map((row) => (
                 <li key={row.id} className="flex gap-2">
@@ -249,8 +274,8 @@ export default function CategoriasPage() {
                   <button
                     type="button"
                     onClick={() => void deleteClient(row.id, row.name)}
-                    aria-label="Apagar cliente"
-                    title="Apagar cliente"
+                    aria-label={t("cat.deleteClientAria")}
+                    title={t("cat.deleteClientAria")}
                     className="rounded-xl bg-red-50 px-3 text-sm font-semibold text-red-700 ring-1 ring-red-200 hover:bg-red-100 dark:bg-red-950/50 dark:text-red-200 dark:ring-red-900"
                   >
                     🗑
@@ -262,7 +287,7 @@ export default function CategoriasPage() {
               <input
                 value={newClient}
                 onChange={(e) => setNewClient(e.target.value)}
-                placeholder="Novo cliente"
+                placeholder={t("cat.newClientPh")}
                 className="pin-field"
               />
               <button
@@ -270,7 +295,7 @@ export default function CategoriasPage() {
                 onClick={() => void addClient(newClient, () => setNewClient(""))}
                 className="pin-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm"
               >
-                Adicionar
+                {t("common.add")}
               </button>
             </div>
           </div>

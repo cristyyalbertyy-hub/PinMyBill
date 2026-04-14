@@ -29,7 +29,7 @@ export function MobileNav() {
             <li key={link.href} className="min-w-0 flex-1">
               <Link
                 href={link.href}
-                className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-[11px] font-semibold leading-tight transition-all duration-200 ease-out active:scale-[0.94] ${
+                className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-[11px] font-semibold leading-tight transition-all duration-200 ease-out active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-stone-950 ${
                   isActive
                     ? "bg-pin-accent text-white shadow-md shadow-teal-700/25 ring-1 ring-white/15 dark:bg-teal-700 dark:text-white dark:shadow-lg dark:shadow-black/35 dark:ring-teal-500/30"
                     : "text-pin-muted hover:bg-pin-teal-soft active:bg-stone-200/80 dark:hover:bg-stone-800 dark:active:bg-stone-700/90"

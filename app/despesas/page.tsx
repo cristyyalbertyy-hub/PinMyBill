@@ -414,9 +414,7 @@ function DespesasPageContent() {
           </p>
         ) : null}
 
-        {!ready ? (
-          <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
-        ) : (
+        {ready ? (
           <>
         <section className="pin-card mb-4 p-4 md:p-6">
           <h2 className="text-lg font-bold text-pin-ink">{t("desp.newReceiptHeading")}</h2>
@@ -746,7 +744,7 @@ function DespesasPageContent() {
         ) : null}
 
           </>
-        )}
+        ) : null}
       </div>
     </main>
   );

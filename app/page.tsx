@@ -60,7 +60,7 @@ export default function Home() {
               {t("home.badge")}
             </p>
             <div className="pin-dash-animate pin-dash-animate-d1 flex flex-wrap items-baseline gap-3">
-              <h1 className="pin-hero-title mb-0 text-4xl font-extrabold tracking-tight md:text-5xl lg:text-[3.25rem]">
+              <h1 className="pin-hero-title mb-0 text-balance text-4xl font-extrabold tracking-tight md:text-5xl lg:text-[3.25rem]">
                 PinMyBill
               </h1>
               <span
@@ -70,6 +70,9 @@ export default function Home() {
                 Beta
               </span>
             </div>
+            <p className="pin-dash-animate pin-dash-animate-d2 pin-lead mt-5 max-w-xl text-pretty md:mt-6 md:text-[1.0625rem] md:leading-relaxed">
+              {t("home.tagline")}
+            </p>
           </div>
 
           <div className="pin-dash-animate pin-dash-animate-d2 flex justify-center md:justify-end">
@@ -108,7 +111,7 @@ export default function Home() {
               key={s.href}
               href={s.href}
               aria-label={t(s.labelKey)}
-              className={`pin-card pin-dash-shortcut pin-dash-animate ${s.delayClass} flex flex-col items-center justify-center gap-2 py-6 no-underline`}
+              className={`pin-card pin-dash-shortcut pin-dash-animate ${s.delayClass} flex flex-col items-center justify-center gap-2 py-6 no-underline ring-0 transition-[box-shadow,transform] duration-200 hover:ring-2 hover:ring-pin-accent/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] dark:focus-visible:ring-offset-[#0c0a09]`}
             >
               <span className="text-4xl leading-none" aria-hidden>
                 {s.emoji}
