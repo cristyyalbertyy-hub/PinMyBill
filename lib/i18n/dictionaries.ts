@@ -33,6 +33,7 @@ const en: Record<string, string> = {
   "theme.themes": "Themes",
   "theme.themeDefault": "Default",
   "theme.themeAlmondBlossom": "Almond blossom flowers",
+  "theme.almondOpacityHint": "Tip: with almond blossom flowers, keep opacity scale low for a clearer photo.",
   "theme.onlyDaySettings": "Color palette and themes are available in day mode only.",
   "nav.dashboard": "Dashboard",
   "nav.entry": "Receipts",
@@ -281,6 +282,8 @@ const fr: Record<string, string> = {
   "theme.themes": "Thèmes",
   "theme.themeDefault": "Par défaut",
   "theme.themeAlmondBlossom": "Fleurs d'amandier",
+  "theme.almondOpacityHint":
+    "Conseil : avec les fleurs d'amandier, gardez une opacité basse pour mieux voir la photo.",
   "theme.onlyDaySettings": "La palette et les thèmes sont disponibles uniquement en mode jour.",
   "nav.entry": "Saisie",
   "nav.history": "Historique",
@@ -526,6 +529,8 @@ const pt: Record<string, string> = {
   "theme.themes": "Temas",
   "theme.themeDefault": "Predefinido",
   "theme.themeAlmondBlossom": "Flores das amendoeiras",
+  "theme.almondOpacityHint":
+    "Dica: com flores das amendoeiras, mantenha a opacidade baixa para a foto ficar mais visível.",
   "theme.onlyDaySettings": "A paleta e os temas estão disponíveis apenas no modo dia.",
   "nav.entry": "Recibos",
   "nav.history": "Histórico",

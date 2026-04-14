@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useT } from "@/lib/i18n/context";
 
 const links = [
@@ -51,7 +50,6 @@ export function TopNav() {
             {t("auth.signOut")}
           </button>
         ) : null}
-        <ThemeSwitcher variant="inline" />
         <LanguageSwitcher variant="inline" />
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
-import { useT } from "@/lib/i18n/context";
+import { useLocaleContext, useT } from "@/lib/i18n/context";
 import { useTheme } from "@/components/theme-provider";
 
 function InstructionsBody() {
@@ -37,6 +37,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   const titleId = useId();
   const settingsTitleId = useId();
   const t = useT();
+  const { locale } = useLocaleContext();
   const {
     preference,
     setPreference,
@@ -66,6 +67,8 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
     };
   }, [open, onKeyDown]);
 
+  const settingsBadge = locale === "fr" ? "P" : locale === "pt" ? "D" : "S";
+
   return (
     <>
       {children}
@@ -78,7 +81,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           aria-haspopup="dialog"
           aria-expanded={settingsOpen}
         >
-          S
+          {settingsBadge}
         </button>
       <button
         type="button"
@@ -189,10 +192,11 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
                 <>
                   <div>
                     <p className="mb-2 text-sm font-semibold text-pin-ink">{t("theme.rainbowPalette")}</p>
-                    <div className="grid grid-cols-7 gap-2">
-                      {["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#6366f1", "#a855f7"].map(
+                    <div className="grid grid-cols-8 gap-2">
+                      {["#ffffff", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#6366f1", "#a855f7"].map(
                         (color) => {
                           const selected = dayOverlayColor.toLowerCase() === color;
+                          const isWhite = color === "#ffffff";
                           return (
                             <button
                               key={color}
@@ -201,7 +205,12 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
                               className={`h-8 w-8 rounded-full ring-2 transition ${
                                 selected ? "ring-pin-accent" : "ring-transparent"
                               }`}
-                              style={{ backgroundColor: color }}
+                              style={{
+                                backgroundColor: color,
+                                boxShadow: isWhite
+                                  ? "inset 0 0 0 1.5px rgb(28 25 23 / 0.24)"
+                                  : "inset 0 0 0 1px rgb(255 255 255 / 0.25)",
+                              }}
                               aria-label={color}
                               aria-pressed={selected}
                             />
@@ -213,7 +222,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
 
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-pin-ink" htmlFor="day-opacity">
-                      {t("theme.opacity")}
+                      {t("theme.opacity")} ({Math.round(dayOverlayOpacity * 100)})
                     </label>
                     <input
                       id="day-opacity"
@@ -225,6 +234,10 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
                       onChange={(e) => setDayOverlayOpacity(Number(e.target.value))}
                       className="w-full accent-pin-accent"
                     />
+                    <div className="mt-1 flex items-center justify-between text-xs font-semibold text-pin-muted">
+                      <span>0</span>
+                      <span>100</span>
+                    </div>
                   </div>
 
                   <div>
@@ -253,6 +266,9 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
                         {t("theme.themeAlmondBlossom")}
                       </button>
                     </div>
+                    {dayThemeStyle === "almond-blossom" ? (
+                      <p className="mt-2 text-xs font-medium text-pin-muted">{t("theme.almondOpacityHint")}</p>
+                    ) : null}
                   </div>
                 </>
               ) : (
