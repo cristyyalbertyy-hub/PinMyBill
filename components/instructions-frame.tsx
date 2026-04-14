@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
-import { useLocaleContext, useT } from "@/lib/i18n/context";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useT } from "@/lib/i18n/context";
 import { useTheme } from "@/components/theme-provider";
 
 function InstructionsBody() {
@@ -34,10 +34,15 @@ function InstructionsBody() {
 export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [selectedBackupFile, setSelectedBackupFile] = useState<string | null>(null);
+  const [showImportPicker, setShowImportPicker] = useState(false);
   const titleId = useId();
   const settingsTitleId = useId();
+  const backupTitleId = useId();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const t = useT();
-  const { locale } = useLocaleContext();
   const {
     preference,
     setPreference,
@@ -54,6 +59,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
     if (e.key !== "Escape") return;
     setOpen(false);
     setSettingsOpen(false);
+    setBackupOpen(false);
   }, []);
 
   useEffect(() => {
@@ -67,12 +73,64 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
     };
   }, [open, onKeyDown]);
 
-  const settingsBadge = locale === "fr" ? "P" : locale === "pt" ? "D" : "S";
+  async function onExportBackup() {
+    try {
+      setBackupBusy(true);
+      const res = await fetch("/api/backup", { cache: "no-store" });
+      if (!res.ok) throw new Error("export-failed");
+      const payload = await res.json();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `pinmybill-backup-${ts}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.alert(t("backup.exportError"));
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function onImportBackup(file: File) {
+    try {
+      setBackupBusy(true);
+      const text = await file.text();
+      const backup = JSON.parse(text) as unknown;
+      if (!window.confirm(t("backup.replaceConfirm"))) return;
+      const res = await fetch("/api/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replace: true, backup }),
+      });
+      if (!res.ok) throw new Error("restore-failed");
+      window.alert(t("backup.restoreOk"));
+      window.location.reload();
+    } catch {
+      window.alert(t("backup.restoreError"));
+    } finally {
+      setBackupBusy(false);
+      setSelectedBackupFile(null);
+      setShowImportPicker(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   return (
     <>
       {children}
       <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex items-center gap-2 md:bottom-6">
+        <button
+          type="button"
+          onClick={() => setBackupOpen(true)}
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-sky-400/40 bg-gradient-to-br from-sky-500 to-blue-800 text-lg font-bold text-white shadow-lg shadow-blue-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80 focus-visible:ring-offset-2 dark:border-sky-500/40 dark:from-sky-600 dark:to-blue-900 dark:ring-stone-800"
+          aria-label={t("backup.buttonAria")}
+          aria-haspopup="dialog"
+          aria-expanded={backupOpen}
+        >
+          B
+        </button>
         <button
           type="button"
           onClick={() => setSettingsOpen(true)}
@@ -81,7 +139,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
           aria-haspopup="dialog"
           aria-expanded={settingsOpen}
         >
-          {settingsBadge}
+          S
         </button>
       <button
         type="button"
@@ -274,6 +332,97 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
               ) : (
                 <p className="text-sm text-pin-muted">{t("theme.onlyDaySettings")}</p>
               )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {backupOpen ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center p-3 sm:items-center sm:p-6"
+          role="presentation"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            aria-label={t("instructions.close")}
+            onClick={() => setBackupOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={backupTitleId}
+            className="relative z-10 w-full max-w-lg rounded-[1.25rem] border border-stone-200/90 bg-[var(--pin-card)] p-4 shadow-[0_25px_60px_-15px_rgba(14,116,144,0.2),0_0_0_1px_rgba(231,229,228,0.6)_inset] ring-1 ring-stone-200/70 backdrop-blur-md dark:border-stone-700 dark:bg-stone-900 dark:shadow-[0_28px_64px_-12px_rgba(0,0,0,0.65)] dark:ring-stone-600/40"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id={backupTitleId} className="text-lg font-bold text-pin-ink">
+                {t("backup.title")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setBackupOpen(false)}
+                className="rounded-xl px-3 py-1.5 text-sm font-semibold text-pin-muted transition-colors duration-200 hover:bg-pin-teal-soft hover:text-pin-ink active:scale-[0.98]"
+              >
+                {t("instructions.close")}
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-pin-muted">{t("backup.lead")}</p>
+            <div className="space-y-3">
+              <section className="rounded-xl border border-stone-200/90 bg-white/60 p-3 dark:border-stone-700 dark:bg-stone-800/40">
+                <h3 className="mb-1 text-sm font-bold text-pin-ink">{t("backup.exportSectionTitle")}</h3>
+                <p className="mb-3 text-xs text-pin-muted">{t("backup.exportSectionLead")}</p>
+                <button
+                  type="button"
+                  onClick={() => void onExportBackup()}
+                  disabled={backupBusy}
+                  className="w-full rounded-xl bg-pin-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60"
+                >
+                  {backupBusy ? t("backup.working") : t("backup.exportNow")}
+                </button>
+              </section>
+
+              <section className="rounded-xl border border-stone-200/90 bg-white/60 p-3 dark:border-stone-700 dark:bg-stone-800/40">
+                <h3 className="mb-1 text-sm font-bold text-pin-ink">{t("backup.importSectionTitle")}</h3>
+                <p className="mb-3 text-xs text-pin-muted">{t("backup.importSectionLead")}</p>
+                <button
+                  type="button"
+                  disabled={backupBusy}
+                  onClick={() => setShowImportPicker(true)}
+                  className="w-full rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-60 dark:bg-sky-600"
+                >
+                  {t("backup.importNow")}
+                </button>
+
+                {showImportPicker ? (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/json,.json"
+                      hidden
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        setSelectedBackupFile(file?.name ?? null);
+                        if (file) void onImportBackup(file);
+                      }}
+                      disabled={backupBusy}
+                    />
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={backupBusy}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-lg border border-stone-300 bg-stone-100 px-3 py-2 text-sm font-semibold text-pin-ink transition hover:bg-stone-200 disabled:opacity-60 dark:border-stone-600 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700"
+                      >
+                        {t("backup.chooseFile")}
+                      </button>
+                      <span className="truncate text-sm text-pin-muted">
+                        {selectedBackupFile ?? t("backup.noFileChosen")}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-pin-muted">{t("backup.replaceModeNote")}</p>
+                  </>
+                ) : null}
+              </section>
             </div>
           </div>
         </div>
