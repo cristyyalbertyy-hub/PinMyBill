@@ -73,6 +73,9 @@ export default function RootLayout({
         <Script id="pin-theme-init" strategy="beforeInteractive">
           {themeBootstrap}
         </Script>
+        <Script id="pin-sw-register" strategy="afterInteractive">
+          {`if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); }); }`}
+        </Script>
         <Providers>
           <InstructionsFrame>{children}</InstructionsFrame>
           <MobileNav />

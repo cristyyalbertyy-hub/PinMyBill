@@ -72,6 +72,7 @@ const en: Record<string, string> = {
   "home.shortcutReceipt": "Receipt",
   "home.shortcutHistory": "History",
   "home.shortcutExport": "Export",
+  "home.installApp": "Install app",
   "home.tagline": "Capture receipts, stay organized, export in seconds—without spreadsheet pain.",
   "instructions.title": "Instructions",
   "instructions.close": "Close",
@@ -343,6 +344,7 @@ const fr: Record<string, string> = {
   "home.shortcutReceipt": "Reçu",
   "home.shortcutHistory": "Historique",
   "home.shortcutExport": "Exporter",
+  "home.installApp": "Installer l’application",
   "home.tagline":
     "Enregistrez vos reçus, gardez l’ordre, exportez en quelques secondes—sans galère de tableur.",
   "instructions.title": "Instructions",
@@ -612,6 +614,7 @@ const pt: Record<string, string> = {
   "home.shortcutReceipt": "Recibo",
   "home.shortcutHistory": "Histórico",
   "home.shortcutExport": "Exportar",
+  "home.installApp": "Instalar app",
   "home.tagline":
     "Regista recibos, mantém tudo organizado e exporta em segundos—sem dor de cabeça com folhas de cálculo.",
   "instructions.title": "Instruções",

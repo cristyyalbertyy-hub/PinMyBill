@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { TopNav } from "@/components/top-nav";
+import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { useT } from "@/lib/i18n/context";
 
 type CategoryRow = { id: string; name: string };
@@ -41,9 +42,18 @@ function CategoryBlock({
   deleteCategory,
   addCategory,
 }: CategoryBlockProps) {
+  const typeByScope = {
+    pessoal: "pessoal",
+    empresa: "empresa",
+    cliente: "cliente",
+  } as const;
+
   return (
     <div className="pin-card p-6">
-      <h2 className="text-lg font-bold text-pin-ink">{title}</h2>
+      <h2 className="inline-flex items-center gap-2 text-lg font-bold text-pin-ink">
+        <ExpenseTypeCircle type={typeByScope[scope]} size="sm" />
+        <span>{title}</span>
+      </h2>
       <ul className="mt-4 space-y-2">
         {rows.map((row) => (
           <li key={row.id} className="flex gap-2">
@@ -256,8 +266,13 @@ export default function CategoriasPage() {
             addCategory={addCategory}
           />
 
-          <div className="pin-card border-l-4 border-l-pin-warm p-6">
-            <h2 className="text-lg font-bold text-pin-ink">{t("cat.clients")}</h2>
+          <div className="pin-card border-l-4 border-l-fuchsia-500 bg-fuchsia-50/30 p-6 dark:bg-fuchsia-950/20">
+            <h2 className="inline-flex items-center gap-2 text-lg font-bold text-pin-ink">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fuchsia-500 text-[11px] font-bold text-white ring-2 ring-fuchsia-300/60 dark:bg-fuchsia-400 dark:text-neutral-900">
+                U
+              </span>
+              <span>{t("cat.clients")}</span>
+            </h2>
             <p className="mt-1 text-sm text-pin-muted">{t("cat.clientCatsLead")}</p>
             <ul className="mt-4 space-y-2">
               {clients.map((row) => (

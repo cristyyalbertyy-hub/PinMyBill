@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { DashboardIllustration } from "@/components/dashboard-illustration";
@@ -29,9 +30,31 @@ const shortcuts = [
   },
 ] as const;
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 export default function Home() {
   const t = useT();
   const { data: session } = useSession();
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    function onBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
+
+  async function handleInstallApp() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
 
   return (
     <main className="pin-page px-4 pb-8 pt-4 md:p-10">
@@ -131,6 +154,18 @@ export default function Home() {
         </section>
 
         <LegacyDataBanner />
+        {installPrompt ? (
+          <div className="mt-4 flex justify-center md:justify-start">
+            <button
+              type="button"
+              onClick={() => void handleInstallApp()}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-pin-accent px-4 py-2 text-sm font-semibold text-white shadow-md shadow-teal-700/25 ring-1 ring-teal-400/30 transition hover:brightness-105 active:scale-[0.98]"
+            >
+              <span aria-hidden>⬇</span>
+              <span>{t("home.installApp")}</span>
+            </button>
+          </div>
+        ) : null}
 
       </div>
     </main>
