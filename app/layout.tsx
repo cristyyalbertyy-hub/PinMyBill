@@ -25,6 +25,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pin-my-bill.vercel.app"),
   title: {
     default: "PinMyBill · Beta",
     template: "%s · PinMyBill Beta",

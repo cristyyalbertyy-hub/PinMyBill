@@ -67,7 +67,7 @@ export default function ExportarPage() {
   const t = useT();
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
-  const [mode, setMode] = useState<ExportMode>("periodo-empresa");
+  const [mode, setMode] = useState<ExportMode>("cliente-periodo");
   const [clientName, setClientName] = useState("");
   const [startDate, setStartDate] = useState("2026-03-01");
   const [endDate, setEndDate] = useState("2026-03-31");
@@ -354,10 +354,10 @@ export default function ExportarPage() {
                 }}
                 className="pin-field"
               >
-                <option value="periodo-empresa">{t("export.modePeriodCompany")}</option>
-                <option value="periodo-pessoal">{t("export.modePeriodPersonal")}</option>
                 <option value="cliente-todo">{t("export.modeClientAll")}</option>
                 <option value="cliente-periodo">{t("export.modeClientPeriod")}</option>
+                <option value="periodo-empresa">{t("export.modePeriodCompany")}</option>
+                <option value="periodo-pessoal">{t("export.modePeriodPersonal")}</option>
               </select>
             </label>
 

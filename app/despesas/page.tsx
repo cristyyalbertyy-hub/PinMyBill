@@ -39,7 +39,7 @@ function DespesasPageContent() {
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadType, setUploadType] = useState<ExpenseType>("empresa");
+  const [uploadType, setUploadType] = useState<ExpenseType>("cliente");
   const [uploadCategory, setUploadCategory] = useState("");
   const [uploadOtherCategoryName, setUploadOtherCategoryName] = useState("");
   const [uploadAmount, setUploadAmount] = useState("");
@@ -572,9 +572,9 @@ function DespesasPageContent() {
                 }}
                 className="pin-field"
               >
+                <option value="cliente">{t("type.cliente")}</option>
                 <option value="empresa">{t("type.empresa")}</option>
                 <option value="pessoal">{t("type.pessoal")}</option>
-                <option value="cliente">{t("type.cliente")}</option>
               </select>
             </label>
             {uploadType === "cliente" ? (

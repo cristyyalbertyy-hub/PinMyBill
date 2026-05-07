@@ -265,9 +265,9 @@ export function EditExpenseModal({
               }}
               className="pin-field pin-field-lg"
             >
+              <option value="cliente">{t("type.cliente")}</option>
               <option value="empresa">{t("type.empresa")}</option>
               <option value="pessoal">{t("type.pessoal")}</option>
-              <option value="cliente">{t("type.cliente")}</option>
             </select>
           </label>
 
