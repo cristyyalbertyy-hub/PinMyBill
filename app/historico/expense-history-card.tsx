@@ -15,9 +15,10 @@ type Props = {
   item: ExpenseItem;
   onModify: () => void;
   onDelete: () => void;
+  onPreviewImage: (url: string) => void;
 };
 
-export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
+export function ExpenseHistoryCard({ item, onModify, onDelete, onPreviewImage }: Props) {
   const t = useT();
 
   return (
@@ -46,13 +47,21 @@ export function ExpenseHistoryCard({ item, onModify, onDelete }: Props) {
       <div className="flex gap-3 pt-2">
         <div className="shrink-0">
           {item.receiptImageUrl ? (
-            <Image
-              src={item.receiptImageUrl}
-              alt=""
-              width={56}
-              height={56}
-              className="h-14 w-14 rounded-xl object-cover ring-1 ring-stone-200 dark:ring-stone-600"
-            />
+            <button
+              type="button"
+              onClick={() => onPreviewImage(item.receiptImageUrl!)}
+              className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/45 focus-visible:ring-offset-2"
+              aria-label={t("hist.previewImageAria")}
+              title={t("hist.previewImageAria")}
+            >
+              <Image
+                src={item.receiptImageUrl}
+                alt=""
+                width={56}
+                height={56}
+                className="h-14 w-14 rounded-xl object-cover ring-1 ring-stone-200 dark:ring-stone-600"
+              />
+            </button>
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-pin-teal-soft text-xs text-pin-soft dark:bg-stone-800">
               —

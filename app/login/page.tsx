@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Suspense, useState } from "react";
@@ -42,6 +43,17 @@ function LoginForm() {
   return (
     <main className="pin-page flex min-h-[70vh] flex-col justify-center px-4 py-10 md:px-10">
       <div className="mx-auto w-full max-w-md">
+        <div className="mb-4 flex justify-center">
+          <div className="relative aspect-[264/119] w-[160px]">
+            <Image
+              src="/brand/prologue.png"
+              alt="Prologue"
+              fill
+              priority
+              className="object-contain drop-shadow-sm"
+            />
+          </div>
+        </div>
         <h1 className="pin-hero-title mb-2 text-2xl font-extrabold tracking-tight text-balance md:text-3xl">
           {t("auth.loginTitle")}
         </h1>

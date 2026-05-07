@@ -121,6 +121,7 @@ const en: Record<string, string> = {
   "hist.loadError": "Could not load history (timeout or Neon/Prisma error).",
   "hist.empty": "No receipts yet.",
   "hist.table.id": "ID",
+  "hist.table.num": "#",
   "hist.table.photo": "Photo",
   "hist.table.merchant": "Merchant",
   "hist.table.date": "Date",
@@ -131,6 +132,7 @@ const en: Record<string, string> = {
   "hist.dbLocal": " Diagnosis: using localhost; remove DATABASE_URL override in this terminal.",
   "hist.dbMissing": " Diagnosis: DATABASE_URL not set for this process.",
   "hist.removeReceiptAria": "Remove receipt",
+  "hist.previewImageAria": "Open receipt image",
   "hist.lead":
     "You can save with or without a photo; without an image, enter a merchant or description. You can add the photo later in History (Edit).",
   "confirm.deleteReceipt": "Remove this receipt? This cannot be undone.",
@@ -148,6 +150,10 @@ const en: Record<string, string> = {
   "desp.otherCategoryPh": "e.g. Events, Marketing…",
   "desp.otherCurrency": "Other currency",
   "desp.otherCurrencyPh": "e.g. BRL",
+  "desp.photoHelp":
+    "If camera fails or says low memory, use Upload image to pick from gallery.",
+  "desp.cameraNoImageSelected":
+    "Could not get a photo from camera. This can happen due to low memory or if capture was canceled. Try Upload image.",
   "cat.title": "Categories",
   "cat.personal": "Personal",
   "cat.company": "Company",
@@ -388,6 +394,7 @@ const fr: Record<string, string> = {
   "hist.loadError": "Impossible de charger l’historique (timeout ou erreur Neon/Prisma).",
   "hist.empty": "Aucun reçu pour le moment.",
   "hist.table.id": "ID",
+  "hist.table.num": "#",
   "hist.table.photo": "Photo",
   "hist.table.merchant": "Commerçant",
   "hist.table.date": "Date",
@@ -665,6 +672,7 @@ const pt: Record<string, string> = {
   "hist.dbLocal": " Diagnóstico: estás a usar localhost; remove override DATABASE_URL neste terminal.",
   "hist.dbMissing": " Diagnóstico: DATABASE_URL não definida no ambiente deste processo.",
   "hist.removeReceiptAria": "Remover recibo",
+  "hist.previewImageAria": "Abrir imagem do recibo",
   "hist.lead":
     "Podes guardar com ou sem foto; sem imagem, indica comerciante ou descrição. Mais tarde podes acrescentar a foto em Histórico (Modificar).",
   "confirm.deleteReceipt": "Remover este recibo? Esta acção não pode ser anulada.",
@@ -683,6 +691,10 @@ const pt: Record<string, string> = {
   "desp.otherCategoryPh": "Ex.: Eventos, Marketing, etc.",
   "desp.otherCurrency": "Outra moeda",
   "desp.otherCurrencyPh": "Ex.: BRL",
+  "desp.photoHelp":
+    "Se a câmara falhar ou mostrar low memory, usa Carregar imagem para escolher da galeria.",
+  "desp.cameraNoImageSelected":
+    "Nao foi possivel obter a foto da camara. Isto pode acontecer por falta de memoria ou cancelamento da captura. Tenta Carregar imagem.",
   "cat.title": "Categorias",
   "cat.personal": "Pessoal",
   "cat.company": "Empresa",

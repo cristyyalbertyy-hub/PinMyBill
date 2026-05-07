@@ -58,6 +58,7 @@ function DespesasPageContent() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
+  const [cameraPendingSelection, setCameraPendingSelection] = useState(false);
 
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -74,6 +75,11 @@ function DespesasPageContent() {
     if (file) {
       setUploadFile(file);
       setUploadError(null);
+      setCameraPendingSelection(false);
+    } else if (cameraPendingSelection) {
+      // Em alguns telemoveis, "low memory" devolve sem ficheiro; noutros pode ser cancelamento.
+      setUploadError(t("desp.cameraNoImageSelected"));
+      setCameraPendingSelection(false);
     }
     if (galleryInputRef.current) galleryInputRef.current.value = "";
     event.target.value = "";
@@ -85,6 +91,7 @@ function DespesasPageContent() {
       setUploadFile(file);
       setUploadError(null);
     }
+    setCameraPendingSelection(false);
     if (cameraInputRef.current) cameraInputRef.current.value = "";
     event.target.value = "";
   }
@@ -154,6 +161,7 @@ function DespesasPageContent() {
     quickCameraTriggeredRef.current = true;
     setUploadError(null);
     const timer = setTimeout(() => {
+      setCameraPendingSelection(true);
       cameraInputRef.current?.click();
     }, 120);
     return () => clearTimeout(timer);
@@ -443,7 +451,10 @@ function DespesasPageContent() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={() => {
+                    setCameraPendingSelection(true);
+                    cameraInputRef.current?.click();
+                  }}
                   className="pin-btn-primary inline-flex min-h-12 items-center gap-2 rounded-xl px-4 py-2.5 text-sm touch-manipulation"
                   aria-label={t("common.takePhoto")}
                 >
@@ -487,6 +498,9 @@ function DespesasPageContent() {
                   {t("common.uploadImage")}
                 </button>
               </div>
+              <p className="text-xs text-pin-soft">
+                {t("desp.photoHelp")}
+              </p>
               {uploadFile ? (
                 <div className="space-y-2">
                   <p className="text-sm text-pin-muted">

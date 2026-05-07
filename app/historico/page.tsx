@@ -38,6 +38,7 @@ export default function HistoricoPage() {
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const selectedItem = useMemo(() => {
     if (!editingCode) return null;
@@ -217,6 +218,7 @@ export default function HistoricoPage() {
                     item={item}
                     onModify={() => setEditingCode(item.id)}
                     onDelete={() => void deleteExpense(item.id)}
+                    onPreviewImage={(url) => setPreviewImageUrl(url)}
                   />
                 ))
               )}
@@ -226,6 +228,7 @@ export default function HistoricoPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-pin-teal-soft/80 text-pin-muted dark:bg-teal-950/40 dark:text-stone-400">
                   <tr>
+                    <th className="px-4 py-3 font-semibold">{t("hist.table.num")}</th>
                     <th className="px-4 py-3 font-semibold">{t("hist.table.id")}</th>
                     <th className="px-4 py-3 font-semibold">{t("hist.table.photo")}</th>
                     <th className="px-4 py-3 font-semibold">{t("hist.table.merchant")}</th>
@@ -237,21 +240,30 @@ export default function HistoricoPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {items.map((item, idx) => (
                     <tr
                       key={item.id}
                       className="border-t border-stone-200/80 transition-colors duration-150 hover:bg-pin-teal-soft/55 dark:border-stone-700/80 dark:hover:bg-teal-950/30"
                     >
+                      <td className="px-4 py-3 font-bold tabular-nums text-pin-accent">{idx + 1}</td>
                       <td className="px-4 py-3 font-semibold text-pin-ink">{item.id}</td>
                       <td className="px-4 py-3">
                         {item.receiptImageUrl ? (
-                          <Image
-                            src={item.receiptImageUrl}
-                            alt=""
-                            width={48}
-                            height={48}
-                            className="h-12 w-12 rounded-lg object-cover ring-1 ring-stone-200 dark:ring-stone-600"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImageUrl(item.receiptImageUrl!)}
+                            className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/45 focus-visible:ring-offset-2"
+                            aria-label={t("hist.previewImageAria")}
+                            title={t("hist.previewImageAria")}
+                          >
+                            <Image
+                              src={item.receiptImageUrl}
+                              alt=""
+                              width={48}
+                              height={48}
+                              className="h-12 w-12 rounded-lg object-cover ring-1 ring-stone-200 dark:ring-stone-600"
+                            />
+                          </button>
                         ) : (
                           <span className="text-xs text-pin-soft">-</span>
                         )}
@@ -291,7 +303,7 @@ export default function HistoricoPage() {
                   ))}
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-pin-muted">
+                      <td colSpan={9} className="px-4 py-6 text-pin-muted">
                         {t("hist.empty")}
                       </td>
                     </tr>
@@ -314,6 +326,31 @@ export default function HistoricoPage() {
         onCategoryCreated={refreshCategoriesOnly}
         onClientCreated={refreshClientsOnly}
       />
+
+      {previewImageUrl ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-label={t("common.close")}
+            onClick={() => setPreviewImageUrl(null)}
+          />
+          <div className="relative z-10 w-full max-w-4xl rounded-2xl border border-stone-200/80 bg-[var(--pin-card)] p-3 shadow-2xl dark:border-stone-700">
+            <button
+              type="button"
+              onClick={() => setPreviewImageUrl(null)}
+              className="mb-2 ml-auto block rounded-lg px-3 py-1.5 text-xs font-semibold text-pin-muted transition hover:bg-pin-teal-soft hover:text-pin-ink"
+            >
+              {t("common.close")}
+            </button>
+            <img
+              src={previewImageUrl}
+              alt={t("common.photo")}
+              className="mx-auto max-h-[78vh] w-auto max-w-full rounded-xl object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

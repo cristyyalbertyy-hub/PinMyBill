@@ -136,36 +136,45 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
       {children}
       {!hideFloatingActions ? (
       <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-[60] flex items-center gap-2 md:bottom-6">
-        <button
-          type="button"
-          onClick={() => setBackupOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-sky-400/40 bg-gradient-to-br from-sky-500 to-blue-800 text-lg font-bold text-white shadow-lg shadow-blue-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80 focus-visible:ring-offset-2 dark:border-sky-500/40 dark:from-sky-600 dark:to-blue-900 dark:ring-stone-800"
-          aria-label={t("backup.buttonAria")}
-          aria-haspopup="dialog"
-          aria-expanded={backupOpen}
-        >
-          B
-        </button>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-gradient-to-br from-amber-500 to-orange-700 text-lg font-bold text-white shadow-lg shadow-orange-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 dark:border-amber-500/40 dark:from-amber-600 dark:to-orange-900 dark:ring-stone-800"
-          aria-label={t("theme.settingsAria")}
-          aria-haspopup="dialog"
-          aria-expanded={settingsOpen}
-        >
-          S
-        </button>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-teal-400/30 bg-gradient-to-br from-pin-accent to-teal-800 text-lg font-bold text-white shadow-lg shadow-teal-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 dark:border-teal-600/40 dark:from-teal-600 dark:to-teal-950 dark:ring-stone-800"
-        aria-label={t("instructions.btnAria")}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-      >
-        ?
-      </button>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setBackupOpen(true)}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-sky-400/40 bg-gradient-to-br from-sky-500 to-blue-800 text-lg font-bold text-white shadow-lg shadow-blue-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/80 focus-visible:ring-offset-2 dark:border-sky-500/40 dark:from-sky-600 dark:to-blue-900 dark:ring-stone-800"
+            aria-label={t("backup.buttonAria")}
+            aria-haspopup="dialog"
+            aria-expanded={backupOpen}
+          >
+            B
+          </button>
+          <span className="text-[10px] font-normal text-pin-soft">Backup</span>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-gradient-to-br from-amber-500 to-orange-700 text-lg font-bold text-white shadow-lg shadow-orange-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 dark:border-amber-500/40 dark:from-amber-600 dark:to-orange-900 dark:ring-stone-800"
+            aria-label={t("theme.settingsAria")}
+            aria-haspopup="dialog"
+            aria-expanded={settingsOpen}
+          >
+            S
+          </button>
+          <span className="text-[10px] font-normal text-pin-soft">Setup</span>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-teal-400/30 bg-gradient-to-br from-pin-accent to-teal-800 text-lg font-bold text-white shadow-lg shadow-teal-700/35 ring-2 ring-white/25 touch-manipulation transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl hover:brightness-105 motion-reduce:hover:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 dark:border-teal-600/40 dark:from-teal-600 dark:to-teal-950 dark:ring-stone-800"
+            aria-label={t("instructions.btnAria")}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+          >
+            ?
+          </button>
+          <span className="text-[10px] font-normal text-pin-soft">Help</span>
+        </div>
       </div>
       ) : null}
       {!hideFloatingActions && open ? (
