@@ -70,6 +70,7 @@ model Expense {
   clientName      String?
   status          ExpenseStatus
   receiptImageUrl String?
+  comment         String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

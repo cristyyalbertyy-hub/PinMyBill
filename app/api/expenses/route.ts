@@ -18,6 +18,7 @@ function serializeExpense(e: {
   clientName: string | null;
   status: ExpenseStatus;
   receiptImageUrl: string | null;
+  comment: string | null;
 }) {
   return {
     id: e.code,
@@ -30,6 +31,7 @@ function serializeExpense(e: {
     clientName: e.clientName ?? undefined,
     status: e.status,
     receiptImageUrl: e.receiptImageUrl ?? undefined,
+    comment: e.comment?.trim() ? e.comment.trim() : undefined,
   };
 }
 
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
       clientName?: string | null;
       status?: ExpenseStatus;
       receiptImageUrl?: string | null;
+      comment?: string | null;
     };
 
     const code = `R-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -81,6 +84,7 @@ export async function POST(request: Request) {
         clientName: body.clientName ?? null,
         status: body.status ?? "rever",
         receiptImageUrl: body.receiptImageUrl ?? null,
+        comment: body.comment?.trim() ? body.comment.trim() : null,
       },
     });
 

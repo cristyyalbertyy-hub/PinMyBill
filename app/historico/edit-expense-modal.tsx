@@ -63,6 +63,7 @@ export function EditExpenseModal({
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [savePending, setSavePending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [comment, setComment] = useState<string>(() => item?.comment ?? "");
   const receiptCameraRef = useRef<HTMLInputElement>(null);
   const receiptGalleryRef = useRef<HTMLInputElement>(null);
 
@@ -84,6 +85,7 @@ export function EditExpenseModal({
 
   useEffect(() => {
     if (!open || !item) return;
+    setComment(item.comment ?? "");
     setReceiptFile(null);
     setRemoveReceipt(false);
     setReceiptPreviewUrl(null);
@@ -199,6 +201,7 @@ export function EditExpenseModal({
         category: finalCategory,
         clientName: type === "cliente" ? clientName : null,
         date: expenseDate,
+        comment: comment.trim() || null,
       };
       if (receiptImageUrl !== undefined) updates.receiptImageUrl = receiptImageUrl;
 
@@ -386,6 +389,18 @@ export function EditExpenseModal({
               />
             </label>
           </div>
+
+          <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+            {t("common.comment")}
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="pin-field pin-field-lg min-h-[4.5rem] resize-y"
+              placeholder={t("common.commentPh")}
+              maxLength={500}
+              rows={2}
+            />
+          </label>
 
           <div className="border-t border-stone-200/80 pt-4 dark:border-stone-700">
             <p className="text-sm font-medium text-pin-muted">{t("common.photo")}</p>

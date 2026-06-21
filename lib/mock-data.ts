@@ -12,6 +12,7 @@ export type ExpenseItem = {
   clientName?: string;
   status: "processado" | "rever";
   receiptImageUrl?: string;
+  comment?: string;
 };
 
 export const expenseItems: ExpenseItem[] = [

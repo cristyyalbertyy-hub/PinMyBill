@@ -48,6 +48,7 @@ function DespesasPageContent() {
   const [uploadClient, setUploadClient] = useState("");
   /** Sem imagem e obrigatorio; com imagem e opcional (cai no nome do ficheiro). */
   const [uploadMerchant, setUploadMerchant] = useState("");
+  const [uploadComment, setUploadComment] = useState("");
   const [uploadDate, setUploadDate] = useState(() => {
     const d = new Date();
     const y = d.getFullYear();
@@ -250,6 +251,7 @@ function DespesasPageContent() {
     setUploadError(null);
     setUploadFile(null);
     setUploadMerchant("");
+    setUploadComment("");
     setUploadAmount("");
     setUploadCurrency("AED");
     setUploadOtherCurrency("");
@@ -347,6 +349,7 @@ function DespesasPageContent() {
           clientName: uploadType === "cliente" ? uploadClient : null,
           status: "processado",
           receiptImageUrl,
+          comment: uploadComment.trim() || null,
         }),
       });
 
@@ -354,6 +357,7 @@ function DespesasPageContent() {
       await createRes.json();
       setUploadFile(null);
       setUploadMerchant("");
+      setUploadComment("");
       setUploadAmount("");
       setUploadCurrency("AED");
       setUploadOtherCurrency("");
@@ -679,6 +683,17 @@ function DespesasPageContent() {
                 />
               </label>
             ) : null}
+            <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted md:col-span-3">
+              {t("common.comment")}
+              <textarea
+                value={uploadComment}
+                onChange={(event) => setUploadComment(event.target.value)}
+                className="pin-field min-h-[4.5rem] resize-y"
+                placeholder={t("common.commentPh")}
+                maxLength={500}
+                rows={2}
+              />
+            </label>
             <div className="flex flex-wrap items-end justify-end gap-3 md:col-span-3">
               <button
                 type="button"

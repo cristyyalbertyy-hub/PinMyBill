@@ -17,6 +17,7 @@ type BackupExpense = {
   clientName?: string | null;
   status: ExpenseStatus;
   receiptImageUrl?: string | null;
+  comment?: string | null;
 };
 
 type BackupPayload = {
@@ -75,6 +76,7 @@ function normalizeBackupPayload(raw: unknown): BackupPayload | null {
         category: e.category.trim(),
         clientName: typeof e.clientName === "string" ? e.clientName.trim() : null,
         receiptImageUrl: typeof e.receiptImageUrl === "string" ? e.receiptImageUrl : null,
+        comment: typeof e.comment === "string" ? e.comment.trim() : null,
       })),
   };
 }
@@ -117,6 +119,7 @@ export async function GET() {
         clientName: e.clientName,
         status: e.status,
         receiptImageUrl: e.receiptImageUrl,
+        comment: e.comment,
       })),
     };
     return NextResponse.json(payload);
@@ -177,6 +180,7 @@ export async function POST(request: Request) {
             clientName: e.clientName ?? null,
             status: e.status,
             receiptImageUrl: e.receiptImageUrl ?? null,
+            comment: e.comment?.trim() ? e.comment.trim() : null,
           })),
         });
       }

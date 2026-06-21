@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
+import { compressImageForPdf, EMAIL_ATTACHMENT_LIMIT_BYTES, formatFileSize } from "@/lib/pdf-image";
 import type { CurrencyCode, ExpenseItem } from "@/lib/mock-data";
 
 type ExportMode =
@@ -63,15 +64,36 @@ function dataUrlToImageFormat(dataUrl: string): "PNG" | "JPEG" | "WEBP" {
   return "JPEG";
 }
 
+function expensesForMode(
+  items: ExpenseItem[],
+  mode: ExportMode,
+  client: string,
+): ExpenseItem[] {
+  if (mode === "periodo-empresa") return items.filter((item) => item.type === "empresa");
+  if (mode === "periodo-pessoal") return items.filter((item) => item.type === "pessoal");
+  if (mode === "cliente-todo") {
+    return items.filter((item) => item.type === "cliente" && item.clientName === client);
+  }
+  return items.filter((item) => item.type === "cliente" && item.clientName === client);
+}
+
+function dateRangeFromItems(items: ExpenseItem[]): { start: string; end: string } | null {
+  if (items.length === 0) return null;
+  const dates = items.map((item) => item.date).sort();
+  return { start: dates[0], end: dates[dates.length - 1] };
+}
+
 export default function ExportarPage() {
   const t = useT();
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
   const [mode, setMode] = useState<ExportMode>("cliente-periodo");
   const [clientName, setClientName] = useState("");
-  const [startDate, setStartDate] = useState("2026-03-01");
-  const [endDate, setEndDate] = useState("2026-03-31");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [hiddenRows, setHiddenRows] = useState<string[]>([]);
+  const [pdfCompress, setPdfCompress] = useState(true);
+  const [pdfLastSize, setPdfLastSize] = useState<number | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -112,10 +134,22 @@ export default function ExportarPage() {
       });
   }, []);
 
+  useEffect(() => {
+    const pool = expensesForMode(expenseItems, mode, clientName);
+    const range = dateRangeFromItems(pool);
+    if (!range) return;
+    setStartDate(range.start);
+    setEndDate(range.end);
+  }, [expenseItems, mode, clientName]);
+
   const filteredRows = useMemo(() => {
     const base = expenseItems.filter((item) => !hiddenRows.includes(item.id));
 
-    const inDateRange = (d: string) => d >= startDate && d <= endDate;
+    const inDateRange = (d: string) => {
+      if (startDate && d < startDate) return false;
+      if (endDate && d > endDate) return false;
+      return true;
+    };
 
     if (mode === "periodo-empresa") {
       return base.filter((item) => item.type === "empresa" && inDateRange(item.date));
@@ -132,7 +166,17 @@ export default function ExportarPage() {
     );
   }, [clientName, endDate, expenseItems, hiddenRows, mode, startDate]);
 
-  const visibleRows = filteredRows;
+  const visibleRows = useMemo(
+    () => [...filteredRows].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
+    [filteredRows],
+  );
+
+  const exportPeriod = useMemo(() => {
+    const range = dateRangeFromItems(visibleRows);
+    if (range) return range;
+    if (startDate && endDate) return { start: startDate, end: endDate };
+    return null;
+  }, [visibleRows, startDate, endDate]);
 
   const totalsByCurrency = useMemo(() => {
     const map = new Map<string, number>();
@@ -158,6 +202,7 @@ export default function ExportarPage() {
       t("export.table.merchant"),
       t("export.table.value"),
       t("export.col.currency"),
+      t("export.col.comment"),
       t("export.table.id"),
     ];
 
@@ -171,6 +216,7 @@ export default function ExportarPage() {
         r.merchant,
         fmtAmount(r.amount),
         r.currency,
+        r.comment ?? "",
         r.id,
       ]);
     });
@@ -190,19 +236,28 @@ export default function ExportarPage() {
     if (visibleRows.length === 0) return;
     setPdfGenerating(true);
     setPdfError(null);
+    setPdfLastSize(null);
     try {
+      const periodStart = exportPeriod?.start ?? startDate;
+      const periodEnd = exportPeriod?.end ?? endDate;
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const title =
         mode === "periodo-empresa"
-          ? t("export.pdfTitlePeriodCompany", { start: startDate, end: endDate })
+          ? t("export.pdfTitlePeriodCompany", { start: periodStart, end: periodEnd })
           : mode === "periodo-pessoal"
-            ? t("export.pdfTitlePeriodPersonal", { start: startDate, end: endDate })
+            ? t("export.pdfTitlePeriodPersonal", { start: periodStart, end: periodEnd })
             : mode === "cliente-todo"
-              ? t("export.pdfTitleClientAll", { name: clientName })
+              ? exportPeriod
+                ? t("export.pdfTitleClientPeriod", {
+                    name: clientName,
+                    start: exportPeriod.start,
+                    end: exportPeriod.end,
+                  })
+                : t("export.pdfTitleClientAll", { name: clientName })
               : t("export.pdfTitleClientPeriod", {
                   name: clientName,
-                  start: startDate,
-                  end: endDate,
+                  start: periodStart,
+                  end: periodEnd,
                 });
 
       doc.setFontSize(14);
@@ -219,6 +274,7 @@ export default function ExportarPage() {
           t("export.table.merchant"),
           t("export.table.value"),
           t("export.col.currency"),
+          t("export.col.comment"),
         ],
       ];
       const body = visibleRows.map((r, idx) => {
@@ -231,6 +287,7 @@ export default function ExportarPage() {
           r.merchant,
           fmtAmount(r.amount),
           r.currency,
+          r.comment ?? "",
         ];
       });
 
@@ -238,9 +295,10 @@ export default function ExportarPage() {
         head,
         body,
         startY: 70,
-        styles: { fontSize: 8, cellPadding: 2.5 },
+        styles: { fontSize: 7, cellPadding: 2.5 },
         columnStyles: {
-          0: { cellWidth: 26, halign: "center", fontStyle: "bold" },
+          0: { cellWidth: 22, halign: "center", fontStyle: "bold" },
+          7: { cellWidth: 90 },
         },
         headStyles: { fillColor: [13, 148, 136], textColor: 255 },
         theme: "grid",
@@ -258,8 +316,8 @@ export default function ExportarPage() {
         doc.text(t("export.pdfTotalsVisibleRows"), 40, yAfterTable);
         yAfterTable += 14;
         doc.setTextColor(28, 25, 23);
-        for (const t of totalsByCurrency) {
-          doc.text(`${t.currency}: ${fmtAmount(t.total)}`, 40, yAfterTable);
+        for (const row of totalsByCurrency) {
+          doc.text(`${row.currency}: ${fmtAmount(row.total)}`, 40, yAfterTable);
           yAfterTable += 12;
         }
       }
@@ -274,42 +332,57 @@ export default function ExportarPage() {
         doc.text(t("export.pdfReceiptHeading", { n: String(n) }), margin, 36);
         doc.setFontSize(9);
         doc.text(`${row.id} · ${row.merchant} · ${row.date}`, margin, 52);
+        if (row.comment?.trim()) {
+          doc.text(`${t("export.col.comment")}: ${row.comment.trim()}`, margin, 66);
+        }
 
         if (!row.receiptImageUrl) {
           doc.setFontSize(10);
-          doc.text(t("export.pdfNoImageBody"), margin, 76);
+          doc.text(t("export.pdfNoImageBody"), margin, row.comment?.trim() ? 82 : 76);
           continue;
         }
 
         try {
-          const dataUrl = await fetchImageAsDataUrl(
+          const rawDataUrl = await fetchImageAsDataUrl(
             row.receiptImageUrl,
             t("export.imageReadFail"),
           );
-          if (!dataUrl) {
+          if (!rawDataUrl) {
             doc.setFontSize(10);
-            doc.text(t("export.pdfImageFetchFail"), margin, 76);
+            doc.text(t("export.pdfImageFetchFail"), margin, row.comment?.trim() ? 82 : 76);
             continue;
           }
-          const fmt = dataUrlToImageFormat(dataUrl);
+          const imageTop = row.comment?.trim() ? 78 : 62;
+          const prepared = pdfCompress
+            ? await compressImageForPdf(rawDataUrl)
+            : { dataUrl: rawDataUrl, width: 0, height: 0 };
+          const dataUrl = prepared.dataUrl;
+          const fmt = pdfCompress ? "JPEG" : dataUrlToImageFormat(dataUrl);
           const props = doc.getImageProperties(dataUrl);
           const pageW = doc.internal.pageSize.getWidth();
           const pageH = doc.internal.pageSize.getHeight();
           const maxW = pageW - 2 * margin;
-          const maxH = pageH - 80;
+          const maxH = pageH - imageTop - 20;
           let w = props.width;
           let h = props.height;
           const scale = Math.min(maxW / w, maxH / h, 1);
           w *= scale;
           h *= scale;
-          doc.addImage(dataUrl, fmt, margin, 62, w, h);
+          doc.addImage(dataUrl, fmt, margin, imageTop, w, h);
         } catch {
           doc.setFontSize(10);
-          doc.text(t("export.pdfImagePageError"), margin, 76);
+          doc.text(t("export.pdfImagePageError"), margin, row.comment?.trim() ? 82 : 76);
         }
       }
 
-      doc.save(`pinmybill-${mode}.pdf`);
+      const blob = doc.output("blob");
+      setPdfLastSize(blob.size);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pinmybill-${mode}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (e) {
       setPdfError(e instanceof Error ? e.message : t("export.pdfGenerateFail"));
     } finally {
@@ -447,6 +520,31 @@ export default function ExportarPage() {
               {pdfGenerating ? t("export.pdfGenerating") : t("export.pdf")}
             </button>
           </div>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-stone-200/80 bg-stone-50/60 px-4 py-3 text-sm text-pin-ink dark:border-stone-700 dark:bg-stone-900/40">
+            <input
+              type="checkbox"
+              checked={pdfCompress}
+              onChange={(event) => setPdfCompress(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-stone-300 text-pin-accent focus:ring-pin-accent"
+            />
+            <span>
+              <span className="font-semibold">{t("export.pdfCompressLabel")}</span>
+              <span className="mt-0.5 block text-xs text-pin-muted">{t("export.pdfCompressHelp")}</span>
+            </span>
+          </label>
+          {pdfLastSize !== null ? (
+            <p
+              className={`mt-3 text-sm font-medium ${
+                pdfLastSize > EMAIL_ATTACHMENT_LIMIT_BYTES
+                  ? "text-amber-800 dark:text-amber-200"
+                  : "text-pin-muted"
+              }`}
+            >
+              {pdfLastSize > EMAIL_ATTACHMENT_LIMIT_BYTES
+                ? t("export.pdfSizeTooLarge", { size: formatFileSize(pdfLastSize) })
+                : t("export.pdfSizeOk", { size: formatFileSize(pdfLastSize) })}
+            </p>
+          ) : null}
           {pdfError ? (
             <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{pdfError}</p>
           ) : null}

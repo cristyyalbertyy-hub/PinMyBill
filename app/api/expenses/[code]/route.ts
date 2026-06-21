@@ -33,6 +33,7 @@ export async function PATCH(request: Request, context: Params) {
       clientName: string | null;
       status: ExpenseStatus;
       receiptImageUrl: string | null;
+      comment: string | null;
     }>;
 
     const data: Record<string, unknown> = {};
@@ -45,6 +46,9 @@ export async function PATCH(request: Request, context: Params) {
     if (body.clientName !== undefined) data.clientName = body.clientName;
     if (body.status !== undefined) data.status = body.status;
     if (body.receiptImageUrl !== undefined) data.receiptImageUrl = body.receiptImageUrl;
+    if (body.comment !== undefined) {
+      data.comment = body.comment?.trim() ? body.comment.trim() : null;
+    }
 
     const updated = await prisma.expense.update({
       where: { code: decoded },
@@ -62,6 +66,7 @@ export async function PATCH(request: Request, context: Params) {
       clientName: updated.clientName ?? undefined,
       status: updated.status,
       receiptImageUrl: updated.receiptImageUrl ?? undefined,
+      comment: updated.comment?.trim() ? updated.comment.trim() : undefined,
     });
   } catch {
     return NextResponse.json({ error: "Falha ao atualizar despesa." }, { status: 500 });
