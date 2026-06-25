@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { DashboardIllustration } from "@/components/dashboard-illustration";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LegacyDataBanner } from "@/components/legacy-data-banner";
@@ -73,17 +72,6 @@ export default function Home() {
         </div>
         <header className="grid items-center gap-8 md:grid-cols-[1fr_min(42%,18rem)] md:gap-10">
           <div className="pin-dash-animate min-w-0">
-            <div className="pin-dash-animate pin-dash-animate-d1 mb-3 flex items-center">
-              <div className="relative aspect-[264/119] w-[150px] sm:w-[180px]">
-                <Image
-                  src="/brand/prologue.png"
-                  alt="Prologue"
-                  fill
-                  priority
-                  className="object-contain drop-shadow-sm"
-                />
-              </div>
-            </div>
             <p className="pin-dash-animate pin-dash-animate-d1 mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200/60 bg-pin-teal-soft/90 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-pin-accent shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-teal-800/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:shadow-teal-900/40">
               <span className="relative flex h-2 w-2" aria-hidden>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pin-accent opacity-40 motion-reduce:animate-none dark:opacity-50" />
@@ -91,16 +79,10 @@ export default function Home() {
               </span>
               {t("home.badge")}
             </p>
-            <div className="pin-dash-animate pin-dash-animate-d1 flex flex-wrap items-baseline gap-3">
+            <div className="pin-dash-animate pin-dash-animate-d1">
               <h1 className="pin-hero-title mb-0 text-balance text-4xl font-extrabold tracking-tight md:text-5xl lg:text-[3.25rem]">
                 PinMyBill
               </h1>
-              <span
-                className="rounded-full border border-amber-400/70 bg-amber-100/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-950 shadow-sm dark:border-amber-600/60 dark:bg-amber-950/70 dark:text-amber-100"
-                title={t("home.betaTitle")}
-              >
-                Beta
-              </span>
             </div>
             <p className="pin-dash-animate pin-dash-animate-d2 pin-lead mt-5 max-w-xl text-pretty md:mt-6 md:text-[1.0625rem] md:leading-relaxed">
               {t("home.tagline")}

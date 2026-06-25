@@ -27,15 +27,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://pin-my-bill.vercel.app"),
   title: {
-    default: "PinMyBill · Beta",
-    template: "%s · PinMyBill Beta",
+    default: "PinMyBill",
+    template: "%s · PinMyBill",
   },
   description:
-    "Capture receipts on your phone, keep history tidy, export PDF or CSV — fast, multilingual, built for real workflows (Beta).",
-  applicationName: "PinMyBill Beta",
+    "Capture receipts on your phone, keep history tidy, export PDF or CSV — fast, multilingual, built for real workflows.",
+  applicationName: "PinMyBill",
   appleWebApp: {
     capable: true,
-    title: "PinMyBill Beta",
+    title: "PinMyBill",
     statusBarStyle: "black-translucent",
   },
   formatDetection: {

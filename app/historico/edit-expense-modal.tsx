@@ -34,6 +34,7 @@ export function EditExpenseModal({
 }: Props) {
   const t = useT();
   const [type, setType] = useState<ExpenseType>(() => item?.type ?? "empresa");
+  const [merchant, setMerchant] = useState<string>(() => item?.merchant ?? "");
   const [clientName, setClientName] = useState<string>(
     () => item?.clientName ?? clientNames[0] ?? "",
   );
@@ -42,13 +43,14 @@ export function EditExpenseModal({
   const [amount, setAmount] = useState<string>(() => String(item?.amount ?? 0));
   const [expenseDate, setExpenseDate] = useState<string>(() => item?.date?.slice(0, 10) ?? "");
   const [currency, setCurrency] = useState<CurrencyCode>(() => {
-    const current = (item?.currency ?? "AED").toUpperCase();
+    const current = (item?.currency ?? "").toUpperCase();
+    if (!current) return "";
     if (currencyOptions.includes(current)) return current;
     return OTHER_CURRENCY_SENTINEL;
   });
   const [otherCurrency, setOtherCurrency] = useState<string>(() => {
-    const current = (item?.currency ?? "AED").toUpperCase();
-    if (currencyOptions.includes(current)) return "";
+    const current = (item?.currency ?? "").toUpperCase();
+    if (!current || currencyOptions.includes(current)) return "";
     return current;
   });
 
@@ -63,6 +65,7 @@ export function EditExpenseModal({
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [savePending, setSavePending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [comment, setComment] = useState<string>(() => item?.comment ?? "");
   const receiptCameraRef = useRef<HTMLInputElement>(null);
   const receiptGalleryRef = useRef<HTMLInputElement>(null);
@@ -85,12 +88,14 @@ export function EditExpenseModal({
 
   useEffect(() => {
     if (!open || !item) return;
+    setMerchant(item.merchant ?? "");
     setComment(item.comment ?? "");
     setReceiptFile(null);
     setRemoveReceipt(false);
     setReceiptPreviewUrl(null);
     setSavePending(false);
     setSaveError(null);
+    setValidationAttempted(false);
   }, [open, item?.id]);
 
   if (!open || !item) return null;
@@ -144,10 +149,23 @@ export function EditExpenseModal({
 
   async function handleSave() {
     closeNewClientModal();
+    setValidationAttempted(true);
     setSavePending(true);
     setSaveError(null);
 
     try {
+      if (!merchant.trim()) {
+        throw new Error(t("edit.enterMerchant"));
+      }
+
+      if (!currency) {
+        throw new Error(t("common.selectCurrencyRequired"));
+      }
+
+      if (!category) {
+        throw new Error(t("common.selectCategoryRequired"));
+      }
+
       const parsed = Number(amount);
       const safeAmount = Number.isNaN(parsed) ? 0 : parsed;
 
@@ -195,6 +213,7 @@ export function EditExpenseModal({
       }
 
       const updates: Record<string, unknown> = {
+        merchant: merchant.trim(),
         type,
         amount: safeAmount,
         currency: currency === OTHER_CURRENCY_SENTINEL ? otherCurrency.trim().toUpperCase() : currency,
@@ -237,9 +256,7 @@ export function EditExpenseModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-pin-ink">{t("edit.title")}</h2>
-            <p className="mt-1 text-sm text-pin-muted">
-              {item.merchant} · {item.id}
-            </p>
+            <p className="mt-1 text-sm text-pin-muted">{item.id}</p>
           </div>
           <button
             type="button"
@@ -252,6 +269,16 @@ export function EditExpenseModal({
 
         <div className="mt-4 grid flex-1 gap-3 overflow-y-auto pr-1">
           <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+            {t("common.merchant")}
+            <input
+              value={merchant}
+              onChange={(e) => setMerchant(e.target.value)}
+              className="pin-field pin-field-lg pin-field-orange-focus"
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
             <span className="inline-flex items-center gap-2">
               {t("common.type")}
               <ExpenseTypeCircle type={type} size="sm" />
@@ -261,8 +288,7 @@ export function EditExpenseModal({
               onChange={(e) => {
                 const next = e.target.value as ExpenseType;
                 setType(next);
-                const nextCats = categoryOptions[next] ?? [];
-                if (nextCats.length) setCategory(nextCats[0]);
+                setCategory("");
                 if (next !== "cliente") setClientName("");
                 else setClientName((prev) => prev || clientNames[0] || "");
               }}
@@ -321,8 +347,11 @@ export function EditExpenseModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="pin-field pin-field-lg"
+              className={`pin-field pin-field-lg ${validationAttempted && !category ? "ring-2 ring-red-500 dark:ring-red-400" : ""}`}
             >
+              <option value="" disabled>
+                {t("common.selectCategory")}
+              </option>
               {availableCategories.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -356,8 +385,11 @@ export function EditExpenseModal({
                     setOtherCurrency("");
                   }
                 }}
-                className="pin-field pin-field-lg"
+                className={`pin-field pin-field-lg ${validationAttempted && !currency ? "ring-2 ring-red-500 dark:ring-red-400" : ""}`}
               >
+                <option value="" disabled>
+                  {t("common.selectCurrency")}
+                </option>
                 {currencyOptions.map((c) => (
                   <option key={c} value={c}>
                     {c}

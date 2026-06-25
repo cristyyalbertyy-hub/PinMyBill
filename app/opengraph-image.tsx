@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "PinMyBill Beta";
+export const alt = "PinMyBill";
 export const size = {
   width: 1200,
   height: 630,
@@ -27,7 +27,7 @@ export default function OpenGraphImage() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "68%" }}>
           <div style={{ fontSize: 62, fontWeight: 800, lineHeight: 1.05 }}>
-            PinMyBill · Beta
+            PinMyBill
           </div>
           <div style={{ fontSize: 32, lineHeight: 1.28, opacity: 0.96 }}>
             Capture receipts, keep history tidy, export PDF or CSV.

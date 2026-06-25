@@ -43,7 +43,7 @@ function DespesasPageContent() {
   const [uploadCategory, setUploadCategory] = useState("");
   const [uploadOtherCategoryName, setUploadOtherCategoryName] = useState("");
   const [uploadAmount, setUploadAmount] = useState("");
-  const [uploadCurrency, setUploadCurrency] = useState<CurrencyCode>("AED");
+  const [uploadCurrency, setUploadCurrency] = useState<CurrencyCode>("");
   const [uploadOtherCurrency, setUploadOtherCurrency] = useState("");
   const [uploadClient, setUploadClient] = useState("");
   /** Sem imagem e obrigatorio; com imagem e opcional (cai no nome do ficheiro). */
@@ -58,6 +58,7 @@ function DespesasPageContent() {
   });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
   const [cameraPendingSelection, setCameraPendingSelection] = useState(false);
 
@@ -189,16 +190,6 @@ function DespesasPageContent() {
     setUploadPreviewUrl(url);
   }, [uploadFile]);
 
-  useEffect(() => {
-    const list = categoryNames[uploadType];
-    if (
-      list.length &&
-      (!uploadCategory || (!list.includes(uploadCategory) && uploadCategory !== OTHER_CATEGORY_SENTINEL))
-    ) {
-      setUploadCategory(list[0] ?? "");
-    }
-  }, [categoryNames, uploadType, uploadCategory]);
-
   const categoryOptions = useMemo(
     () => ({
       pessoal: categoryNames.pessoal,
@@ -249,20 +240,20 @@ function DespesasPageContent() {
 
   function resetReceiptForm() {
     setUploadError(null);
+    setValidationAttempted(false);
     setUploadFile(null);
     setUploadMerchant("");
     setUploadComment("");
     setUploadAmount("");
-    setUploadCurrency("AED");
+    setUploadCurrency("");
     setUploadOtherCurrency("");
     setUploadOtherCategoryName("");
+    setUploadCategory("");
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     setUploadDate(`${y}-${m}-${day}`);
-    const list = categoryNames[uploadType];
-    setUploadCategory(list[0] ?? "");
     if (clientNames.length) {
       setUploadClient((prev) => (clientNames.includes(prev) ? prev : clientNames[0] ?? ""));
     }
@@ -270,8 +261,19 @@ function DespesasPageContent() {
 
   async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setValidationAttempted(true);
+
+    if (!uploadCurrency) {
+      setUploadError(t("common.selectCurrencyRequired"));
+      return;
+    }
     if (uploadCurrency === OTHER_CURRENCY_SENTINEL && !uploadOtherCurrency.trim()) {
       setUploadError("Escreve a outra moeda (ex.: BRL).");
+      return;
+    }
+
+    if (!uploadCategory) {
+      setUploadError(t("common.selectCategoryRequired"));
       return;
     }
 
@@ -310,7 +312,7 @@ function DespesasPageContent() {
         receiptImageUrl = await uploadReceiptImage(uploadFile);
       }
 
-      let cat = uploadCategory || categoryOptions[uploadType][0] || "Geral";
+      let cat = uploadCategory;
       if (uploadCategory === OTHER_CATEGORY_SENTINEL) {
         const other = uploadOtherCategoryName.trim();
         if (!other) throw new Error("Escreve o nome da categoria 'Outra'.");
@@ -359,8 +361,10 @@ function DespesasPageContent() {
       setUploadMerchant("");
       setUploadComment("");
       setUploadAmount("");
-      setUploadCurrency("AED");
+      setUploadCurrency("");
       setUploadOtherCurrency("");
+      setUploadCategory("");
+      setValidationAttempted(false);
       {
         const d = new Date();
         const y = d.getFullYear();
@@ -571,8 +575,7 @@ function DespesasPageContent() {
                 onChange={(event) => {
                   const nextType = event.target.value as ExpenseType;
                   setUploadType(nextType);
-                  const list = categoryNames[nextType];
-                  setUploadCategory(list[0] ?? "");
+                  setUploadCategory("");
                 }}
                 className="pin-field"
               >
@@ -616,15 +619,16 @@ function DespesasPageContent() {
               <select
                 value={uploadCategory}
                 onChange={(event) => setUploadCategory(event.target.value)}
-                className="pin-field"
+                className={`pin-field ${validationAttempted && !uploadCategory ? "ring-2 ring-red-500 dark:ring-red-400" : ""}`}
               >
-                {(categoryNames[uploadType].length ? categoryNames[uploadType] : ["Geral"]).map(
-                  (option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ),
-                )}
+                <option value="" disabled>
+                  {t("common.selectCategory")}
+                </option>
+                {categoryNames[uploadType].map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
                 <option value={OTHER_CATEGORY_SENTINEL}>{t("common.other")}</option>
               </select>
             </label>
@@ -661,8 +665,11 @@ function DespesasPageContent() {
                     setUploadOtherCurrency("");
                   }
                 }}
-                className="pin-field"
+                className={`pin-field ${validationAttempted && !uploadCurrency ? "ring-2 ring-red-500 dark:ring-red-400" : ""}`}
               >
+                <option value="" disabled>
+                  {t("common.selectCurrency")}
+                </option>
                 <option value="AED">AED</option>
                 <option value="QAR">QAR</option>
                 <option value="SAR">SAR</option>

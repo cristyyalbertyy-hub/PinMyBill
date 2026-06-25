@@ -39,6 +39,14 @@ export default function HistoricoPage() {
 
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [filterClient, setFilterClient] = useState("");
+
+  const filteredItems = useMemo(() => {
+    if (!filterClient) return items;
+    return items.filter(
+      (item) => item.type === "cliente" && item.clientName === filterClient,
+    );
+  }, [filterClient, items]);
 
   const selectedItem = useMemo(() => {
     if (!editingCode) return null;
@@ -206,13 +214,33 @@ export default function HistoricoPage() {
 
         {ready ? (
           <>
+            {clientNames.length > 0 ? (
+              <div className="mb-4">
+                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:max-w-xs">
+                  {t("hist.filterClient")}
+                  <select
+                    value={filterClient}
+                    onChange={(event) => setFilterClient(event.target.value)}
+                    className="pin-field"
+                  >
+                    <option value="">{t("hist.filterAll")}</option>
+                    {clientNames.map((client) => (
+                      <option key={client} value={client}>
+                        {client}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
             <div className="space-y-3 md:hidden">
-              {items.length === 0 ? (
+              {filteredItems.length === 0 ? (
                 <p className="pin-card border-dashed p-8 text-center text-sm font-medium text-pin-muted">
                   {t("hist.empty")}
                 </p>
               ) : (
-                items.map((item) => (
+                filteredItems.map((item) => (
                   <ExpenseHistoryCard
                     key={item.id}
                     item={item}
@@ -240,7 +268,7 @@ export default function HistoricoPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, idx) => (
+                  {filteredItems.map((item, idx) => (
                     <tr
                       key={item.id}
                       className="border-t border-stone-200/80 transition-colors duration-150 hover:bg-pin-teal-soft/55 dark:border-stone-700/80 dark:hover:bg-teal-950/30"
@@ -301,7 +329,7 @@ export default function HistoricoPage() {
                       </td>
                     </tr>
                   ))}
-                  {items.length === 0 ? (
+                  {filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="px-4 py-6 text-pin-muted">
                         {t("hist.empty")}
