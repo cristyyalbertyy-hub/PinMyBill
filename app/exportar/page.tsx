@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TopNav } from "@/components/top-nav";
@@ -435,23 +436,34 @@ export default function ExportarPage() {
             </label>
 
             {(mode === "cliente-todo" || mode === "cliente-periodo") && (
-              <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
-                {t("export.client")}
-                <select
-                  value={clientName}
-                  onChange={(event) => {
-                    setHiddenRows([]);
-                    setClientName(event.target.value);
-                  }}
-                  className="pin-field"
-                >
-                  {clients.map((client) => (
-                    <option key={client} value={client}>
-                      {client}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex flex-col gap-2">
+                <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
+                  {t("export.client")}
+                  <select
+                    value={clientName}
+                    onChange={(event) => {
+                      setHiddenRows([]);
+                      setClientName(event.target.value);
+                    }}
+                    className="pin-field"
+                  >
+                    {clients.map((client) => (
+                      <option key={client} value={client}>
+                        {client}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {clientName ? (
+                  <Link
+                    href={`/faturar?client=${encodeURIComponent(clientName)}`}
+                    className="pin-btn-secondary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold no-underline"
+                  >
+                    <span aria-hidden>🧾</span>
+                    {t("invoice.createBill")}
+                  </Link>
+                ) : null}
+              </div>
             )}
 
             {mode === "periodo-empresa" ||

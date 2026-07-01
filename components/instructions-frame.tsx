@@ -29,6 +29,10 @@ function InstructionsBody() {
         <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.exportTitle")}</h3>
         <p>{t("instructions.exportBody")}</p>
       </section>
+      <section>
+        <h3 className="mb-2 font-bold text-pin-ink">{t("instructions.invoiceTitle")}</h3>
+        <p>{t("instructions.invoiceBody")}</p>
+      </section>
     </div>
   );
 }

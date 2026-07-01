@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ExpenseTypeCircle, ExpenseTypeLegend } from "@/components/expense-type-circle";
 import { TopNav } from "@/components/top-nav";
 import type { ExpenseItem, ExpenseType } from "@/lib/mock-data";
@@ -215,8 +216,8 @@ export default function HistoricoPage() {
         {ready ? (
           <>
             {clientNames.length > 0 ? (
-              <div className="mb-4">
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:max-w-xs">
+              <div className="mb-4 flex flex-wrap items-end gap-3">
+                <label className="flex min-w-[min(100%,14rem)] flex-col gap-1 text-sm font-medium text-pin-muted">
                   {t("hist.filterClient")}
                   <select
                     value={filterClient}
@@ -231,6 +232,15 @@ export default function HistoricoPage() {
                     ))}
                   </select>
                 </label>
+                {filterClient ? (
+                  <Link
+                    href={`/faturar?client=${encodeURIComponent(filterClient)}`}
+                    className="pin-btn-secondary inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold no-underline"
+                  >
+                    <span aria-hidden>🧾</span>
+                    {t("invoice.createBill")}
+                  </Link>
+                ) : null}
               </div>
             ) : null}
 

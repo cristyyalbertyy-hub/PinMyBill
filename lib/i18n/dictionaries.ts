@@ -91,6 +91,10 @@ const en: Record<string, string> = {
   "instructions.exportTitle": "Export",
   "instructions.exportBody":
     "Pick a mode (company or personal period, by client, etc.), set dates, remove rows you do not want, then generate CSV (Excel) or PDF.",
+  "instructions.invoiceTitle": "Client bill",
+  "instructions.invoiceBody":
+    "Open Fatura in the menu (or go to /faturar). Choose the client, edit the bill fields, preview on the right, then Generate bill PDF. You can also open it from Export or History when a client is selected.",
+  "invoice.createBill": "Create bill for this client",
   "type.empresa": "Enterprise",
   "type.pessoal": "Personal",
   "type.cliente": "Client",
@@ -425,6 +429,10 @@ const fr: Record<string, string> = {
   "instructions.exportTitle": "Exporter",
   "instructions.exportBody":
     "Choisissez un mode (période entreprise ou personnel, par client, etc.), les dates, retirez les lignes indésirables puis générez CSV (Excel) ou PDF.",
+  "instructions.invoiceTitle": "Facture client",
+  "instructions.invoiceBody":
+    "Ouvrez Facture dans le menu (ou allez sur /faturar). Choisissez le client, modifiez les champs, prévisualisez à droite, puis générez le PDF. Vous pouvez aussi y accéder depuis Exporter ou Historique quand un client est sélectionné.",
+  "invoice.createBill": "Créer une facture pour ce client",
   "type.empresa": "Entreprise",
   "type.pessoal": "Personnel",
   "type.cliente": "Client",
@@ -754,6 +762,10 @@ const pt: Record<string, string> = {
   "instructions.exportTitle": "Exportar",
   "instructions.exportBody":
     "Escolhe o modo (período empresa ou pessoal, por cliente, etc.), define as datas, remove linhas da lista se não quiseres incluí-las e gera CSV (Excel) ou PDF.",
+  "instructions.invoiceTitle": "Fatura para cliente",
+  "instructions.invoiceBody":
+    "Abre Fatura no menu (ou vai a /faturar). Escolhe o cliente, edita os campos, vê a pré-visualização à direita e gera o PDF. Também podes abrir a partir de Exportar ou Histórico quando um cliente está seleccionado.",
+  "invoice.createBill": "Criar fatura para este cliente",
   "type.empresa": "Empresa",
   "type.pessoal": "Pessoal",
   "type.cliente": "Cliente",
