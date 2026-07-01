@@ -6,7 +6,19 @@ import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { uploadReceiptImage } from "@/lib/receipt-upload";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
-import type { CurrencyCode, ExpenseType } from "@/lib/mock-data";
+import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
+
+const STANDARD_CURRENCY_CODES = new Set(["AED", "QAR", "SAR", "USD", "EUR"]);
+
+function lastCurrencyByClient(expenses: ExpenseItem[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const exp of expenses) {
+    if (exp.type === "cliente" && exp.clientName && !(exp.clientName in map)) {
+      map[exp.clientName] = exp.currency;
+    }
+  }
+  return map;
+}
 
 type GroupedNames = {
   pessoal: string[];
@@ -34,6 +46,7 @@ function DespesasPageContent() {
     cliente: [],
   });
   const [clientNames, setClientNames] = useState<string[]>([]);
+  const [clientLastCurrency, setClientLastCurrency] = useState<Record<string, string>>({});
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
@@ -71,6 +84,26 @@ function DespesasPageContent() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const quickCameraTriggeredRef = useRef(false);
   const uploadPreviewUrlRef = useRef<string | null>(null);
+
+  const applyClientCurrencyDefault = useCallback(
+    (clientName: string, currencyMap: Record<string, string>) => {
+      const last = currencyMap[clientName];
+      if (!last) {
+        setUploadCurrency("");
+        setUploadOtherCurrency("");
+        return;
+      }
+      const upper = last.toUpperCase();
+      if (STANDARD_CURRENCY_CODES.has(upper)) {
+        setUploadCurrency(upper);
+        setUploadOtherCurrency("");
+      } else {
+        setUploadCurrency(OTHER_CURRENCY_SENTINEL);
+        setUploadOtherCurrency(upper);
+      }
+    },
+    [],
+  );
 
   function handleCameraImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -116,13 +149,14 @@ function DespesasPageContent() {
     }
 
     try {
-      const [catRes, clRes] = await Promise.all([
+      const [catRes, clRes, exRes] = await Promise.all([
         fetchJsonWithTimeout<{
           pessoal: { name: string }[];
           empresa: { name: string }[];
           cliente: { name: string }[];
         }>("/api/categories", 28000),
         fetchJsonWithTimeout<{ name: string }[]>("/api/clients", 28000),
+        fetchJsonWithTimeout<ExpenseItem[]>("/api/expenses", 28000),
       ]);
       setCategoryNames({
         pessoal: catRes.pessoal.map((r) => r.name),
@@ -132,6 +166,7 @@ function DespesasPageContent() {
 
       const names = clRes.map((c) => c.name);
       setClientNames(names);
+      setClientLastCurrency(lastCurrencyByClient(exRes));
       setUploadClient((prev) => {
         if (prev && names.includes(prev)) return prev;
         return names[0] ?? "";
@@ -155,6 +190,17 @@ function DespesasPageContent() {
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    if (uploadType !== "cliente" || !uploadClient) {
+      if (uploadType !== "cliente") {
+        setUploadCurrency("");
+        setUploadOtherCurrency("");
+      }
+      return;
+    }
+    applyClientCurrencyDefault(uploadClient, clientLastCurrency);
+  }, [uploadType, uploadClient, clientLastCurrency, applyClientCurrencyDefault]);
 
   useEffect(() => {
     if (!ready) return;
@@ -245,8 +291,6 @@ function DespesasPageContent() {
     setUploadMerchant("");
     setUploadComment("");
     setUploadAmount("");
-    setUploadCurrency("");
-    setUploadOtherCurrency("");
     setUploadOtherCategoryName("");
     setUploadCategory("");
     const d = new Date();
@@ -256,6 +300,12 @@ function DespesasPageContent() {
     setUploadDate(`${y}-${m}-${day}`);
     if (clientNames.length) {
       setUploadClient((prev) => (clientNames.includes(prev) ? prev : clientNames[0] ?? ""));
+    }
+    if (uploadType === "cliente" && uploadClient) {
+      applyClientCurrencyDefault(uploadClient, clientLastCurrency);
+    } else {
+      setUploadCurrency("");
+      setUploadOtherCurrency("");
     }
   }
 
@@ -357,14 +407,32 @@ function DespesasPageContent() {
 
       if (!createRes.ok) throw new Error("Falha ao guardar despesa.");
       await createRes.json();
+
+      const savedCurrency =
+        uploadCurrency === OTHER_CURRENCY_SENTINEL
+          ? uploadOtherCurrency.trim().toUpperCase()
+          : uploadCurrency;
+
+      if (uploadType === "cliente" && uploadClient && savedCurrency) {
+        setClientLastCurrency((prev) => ({ ...prev, [uploadClient]: savedCurrency }));
+      }
+
       setUploadFile(null);
       setUploadMerchant("");
       setUploadComment("");
       setUploadAmount("");
-      setUploadCurrency("");
-      setUploadOtherCurrency("");
       setUploadCategory("");
       setValidationAttempted(false);
+
+      if (uploadType === "cliente" && uploadClient && savedCurrency) {
+        applyClientCurrencyDefault(uploadClient, {
+          ...clientLastCurrency,
+          [uploadClient]: savedCurrency,
+        });
+      } else {
+        setUploadCurrency("");
+        setUploadOtherCurrency("");
+      }
       {
         const d = new Date();
         const y = d.getFullYear();

@@ -85,6 +85,7 @@ export const config = {
     "/categorias/:path*",
     "/despesas/:path*",
     "/exportar/:path*",
+    "/faturar/:path*",
     "/historico/:path*",
   ],
 };

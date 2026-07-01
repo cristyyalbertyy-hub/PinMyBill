@@ -27,6 +27,12 @@ const shortcuts = [
     labelKey: "home.shortcutExport",
     delayClass: "pin-dash-animate-d3",
   },
+  {
+    href: "/faturar",
+    emoji: "🧾",
+    labelKey: "home.shortcutBill",
+    delayClass: "pin-dash-animate-d4",
+  },
 ] as const;
 
 type BeforeInstallPromptEvent = Event & {
@@ -117,7 +123,7 @@ export default function Home() {
         </header>
 
         <section
-          className="pin-dash-animate pin-dash-animate-d3 mt-8 grid grid-cols-3 gap-3 sm:mx-auto sm:max-w-xl md:mt-10 lg:max-w-none"
+          className="pin-dash-animate pin-dash-animate-d3 mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-xl sm:grid-cols-4 md:mt-10 lg:max-w-none"
           aria-label={t("home.shortcutsAria")}
         >
           {shortcuts.map((s) => (

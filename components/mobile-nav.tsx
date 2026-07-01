@@ -9,6 +9,7 @@ const links = [
   { href: "/despesas", key: "mobile.receipts", icon: "📷" },
   { href: "/historico", key: "mobile.history", icon: "🗂️" },
   { href: "/exportar", key: "mobile.pdf", icon: "📄" },
+  { href: "/faturar", key: "mobile.bill", icon: "🧾" },
   { href: "/categorias", key: "mobile.categories", icon: "🏷️" },
 ] as const;
 

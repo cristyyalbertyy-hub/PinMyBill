@@ -11,6 +11,7 @@ const links = [
   { href: "/despesas", key: "nav.entry" },
   { href: "/historico", key: "nav.history" },
   { href: "/exportar", key: "nav.exportPdf" },
+  { href: "/faturar", key: "nav.bill" },
   { href: "/categorias", key: "nav.categories" },
 ] as const;
 
