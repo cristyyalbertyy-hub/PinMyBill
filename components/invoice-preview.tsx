@@ -1,73 +1,92 @@
 "use client";
 
 import type { InvoiceFormData, InvoiceLabels } from "@/lib/invoice-types";
-import { computeTaxAmount } from "@/lib/invoice-types";
+import { INVOICE_ORANGE, computeTaxAmount, fmtInvoiceAmount } from "@/lib/invoice-types";
 
 type Props = {
   data: InvoiceFormData;
   labels: InvoiceLabels;
 };
 
-function fmtAmount(n: number) {
-  if (!Number.isFinite(n)) return "0.00";
-  return n.toFixed(2);
-}
-
 export function InvoicePreview({ data, labels }: Props) {
   const taxAmount = computeTaxAmount(data.amount, data.taxPercent);
   const lineItems =
     data.lineItems.length > 0
       ? data.lineItems
-      : [{ description: labels.description, amount: data.amount, date: data.date }];
+      : [
+          {
+            description: labels.itemDescription,
+            duration: 1,
+            rate: data.amount,
+            amount: data.amount,
+          },
+        ];
+
+  const taxLabel =
+    data.taxPercent === 0
+      ? labels.taxZero
+      : `${labels.tax} (${fmtInvoiceAmount(data.taxPercent)}%)`;
+
+  const totalDisplay = data.currency
+    ? `${data.currency === "EUR" ? "€" : data.currency}${fmtInvoiceAmount(data.totalAmount)}`
+    : fmtInvoiceAmount(data.totalAmount);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-sm dark:border-stone-700 dark:bg-stone-950">
-      <div className="h-1.5 bg-pin-accent" />
-
       <div className="p-5 md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-200/80 pb-5 dark:border-stone-700">
-          <div className="min-w-0">
-            <p className="text-lg font-bold text-pin-ink">{data.fromName || "—"}</p>
-            {data.fromEmail ? (
-              <p className="mt-1 text-sm text-pin-muted">
-                {labels.email}: {data.fromEmail}
-              </p>
-            ) : null}
-            {data.fromPhone ? (
-              <p className="mt-0.5 text-sm text-pin-muted">
-                {labels.phone}: {data.fromPhone}
-              </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 text-sm text-pin-ink">
+            {data.fromName ? <p>{data.fromName}</p> : null}
+            {data.fromPhone ? <p>{data.fromPhone}</p> : null}
+            {data.fromEmail ? <p>{data.fromEmail}</p> : null}
+            {data.fromAddress ? (
+              <p className="mt-1 whitespace-pre-wrap text-pin-muted">{data.fromAddress}</p>
             ) : null}
           </div>
           <div className="text-right">
-            <p className="text-2xl font-extrabold tracking-tight text-pin-accent">
+            <p
+              className="text-3xl font-bold tracking-tight"
+              style={{ color: `rgb(${INVOICE_ORANGE.join(",")})` }}
+            >
               {labels.documentTitle}
             </p>
-            <p className="mt-1 text-sm text-pin-muted">
-              {labels.billNumber}: <span className="font-medium text-pin-ink">{data.billNumber}</span>
-            </p>
-            <p className="text-sm text-pin-muted">
-              {labels.date}: <span className="font-medium text-pin-ink">{data.date}</span>
+            <p className="mt-1 text-sm text-pin-ink">
+              {labels.billNumber} {data.billNumber}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 rounded-xl bg-stone-50 px-4 py-3 dark:bg-stone-900/70">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-pin-accent">
-            {labels.billTo}
-          </p>
-          <p className="mt-1 text-base font-bold text-pin-ink">{data.toName || "—"}</p>
-          {data.toEmail ? <p className="mt-1 text-sm text-pin-muted">{data.toEmail}</p> : null}
-          {data.toPhone ? <p className="mt-0.5 text-sm text-pin-muted">{data.toPhone}</p> : null}
+        <div className="mt-6 flex flex-wrap justify-between gap-4">
+          <div className="min-w-[min(100%,14rem)]">
+            <p className="text-sm font-bold text-pin-ink">{labels.billTo}</p>
+            <p className="mt-2 text-sm font-bold text-pin-ink">{data.toName || "—"}</p>
+            {data.toAddress ? (
+              <p className="mt-1 whitespace-pre-wrap text-sm text-pin-muted">{data.toAddress}</p>
+            ) : null}
+          </div>
+          <div className="text-right text-sm text-pin-ink">
+            <p>
+              {labels.date} : {data.date}
+            </p>
+            <p className="mt-1">
+              {labels.terms} : {data.terms || "—"}
+            </p>
+          </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-stone-200/80 dark:border-stone-700">
+        <p className="mt-4 text-sm text-pin-ink">
+          <span className="font-bold">{labels.projectName} :</span> {data.projectName || "—"}
+        </p>
+
+        <div className="mt-4 overflow-hidden rounded-sm border border-stone-200/80 dark:border-stone-700">
           <table className="w-full text-left text-sm">
-            <thead className="bg-pin-accent text-white">
+            <thead style={{ backgroundColor: `rgb(${INVOICE_ORANGE.join(",")})` }} className="text-white">
               <tr>
-                <th className="px-3 py-2.5 font-semibold">{labels.description}</th>
-                <th className="px-3 py-2.5 font-semibold">{labels.tableDate}</th>
-                <th className="px-3 py-2.5 text-right font-semibold">{labels.amount}</th>
+                <th className="px-2 py-2 font-semibold">{labels.tableNum}</th>
+                <th className="px-2 py-2 font-semibold">{labels.description}</th>
+                <th className="px-2 py-2 text-right font-semibold">{labels.duration}</th>
+                <th className="px-2 py-2 text-right font-semibold">{labels.rate}</th>
+                <th className="px-2 py-2 text-right font-semibold">{labels.amount}</th>
               </tr>
             </thead>
             <tbody>
@@ -76,10 +95,16 @@ export function InvoicePreview({ data, labels }: Props) {
                   key={`${item.description}-${idx}`}
                   className="border-t border-stone-200/80 dark:border-stone-700"
                 >
-                  <td className="px-3 py-2.5 text-pin-ink">{item.description}</td>
-                  <td className="px-3 py-2.5 text-pin-muted">{item.date ?? ""}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-pin-ink">
-                    {data.currency} {fmtAmount(item.amount)}
+                  <td className="px-2 py-2 text-center text-pin-muted">{idx + 1}</td>
+                  <td className="px-2 py-2 text-pin-ink">{item.description}</td>
+                  <td className="px-2 py-2 text-right text-pin-ink">
+                    {fmtInvoiceAmount(item.duration)}
+                  </td>
+                  <td className="px-2 py-2 text-right text-pin-ink">
+                    {fmtInvoiceAmount(item.rate)}
+                  </td>
+                  <td className="px-2 py-2 text-right font-medium text-pin-ink">
+                    {fmtInvoiceAmount(item.amount)}
                   </td>
                 </tr>
               ))}
@@ -87,37 +112,53 @@ export function InvoicePreview({ data, labels }: Props) {
           </table>
         </div>
 
-        <div className="mt-5 flex justify-end">
-          <dl className="w-full max-w-xs space-y-2 text-sm">
-            <div className="flex justify-between gap-4 text-pin-muted">
+        <div className="mt-4 flex justify-end">
+          <dl className="w-full max-w-[14rem] space-y-1.5 text-sm text-pin-ink">
+            <div className="flex justify-between gap-4">
               <dt>{labels.subtotal}</dt>
-              <dd className="font-medium text-pin-ink">
-                {data.currency} {fmtAmount(data.amount)}
-              </dd>
+              <dd>{fmtInvoiceAmount(data.amount)}</dd>
             </div>
-            <div className="flex justify-between gap-4 text-pin-muted">
-              <dt>
-                {labels.tax} ({fmtAmount(data.taxPercent)}%)
-              </dt>
-              <dd className="font-medium text-pin-ink">
-                {data.currency} {fmtAmount(taxAmount)}
-              </dd>
+            <div className="flex justify-between gap-4">
+              <dt>{taxLabel}</dt>
+              <dd>{fmtInvoiceAmount(taxAmount)}</dd>
             </div>
-            <div className="flex justify-between gap-4 rounded-lg bg-pin-accent px-3 py-2.5 font-bold text-white">
+            <div className="flex justify-between gap-4 border-t border-stone-300 pt-2 font-bold dark:border-stone-600">
               <dt>{labels.total}</dt>
-              <dd>
-                {data.currency} {fmtAmount(data.totalAmount)}
-              </dd>
+              <dd>{totalDisplay}</dd>
             </div>
           </dl>
         </div>
 
         {data.notes.trim() ? (
-          <div className="mt-5 border-t border-stone-200/80 pt-4 dark:border-stone-700">
-            <p className="text-sm font-semibold text-pin-ink">{labels.notes}</p>
+          <div className="mt-5 max-w-[55%]">
+            <p className="text-sm font-bold text-pin-ink">{labels.notes}</p>
             <p className="mt-1 whitespace-pre-wrap text-sm text-pin-muted">{data.notes.trim()}</p>
           </div>
         ) : null}
+
+        <div className="mt-5 max-w-[55%]">
+          <p className="text-sm font-bold text-pin-ink">{labels.bankDetails}</p>
+          <dl className="mt-2 space-y-1 text-sm text-pin-muted">
+            <div>
+              {labels.bankAccountName} {data.bank.accountName}
+            </div>
+            <div>
+              {labels.bankName} {data.bank.bankName}
+            </div>
+            <div>
+              {labels.bankAccountNo} {data.bank.accountNo}
+            </div>
+            <div>
+              {labels.bankIban} {data.bank.iban}
+            </div>
+            <div>
+              {labels.bankSwift} {data.bank.swift}
+            </div>
+            <div>
+              {labels.bankCurrency} {data.bank.currency}
+            </div>
+          </dl>
+        </div>
       </div>
     </article>
   );

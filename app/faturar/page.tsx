@@ -6,35 +6,41 @@ import { InvoicePreview } from "@/components/invoice-preview";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
-import type { InvoiceFormData, InvoiceLabels } from "@/lib/invoice-types";
+import type { InvoiceBankDetails, InvoiceFormData, InvoiceLabels } from "@/lib/invoice-types";
 import { computeTotalAmount } from "@/lib/invoice-types";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BILLER_PROFILE_KEY = "pinmybill-biller-profile";
+const BANK_PROFILE_KEY = "pinmybill-bank-profile";
 
 type BillerProfile = {
   fromName: string;
+  fromAddress: string;
   fromEmail: string;
   fromPhone: string;
 };
 
 type PeriodMode = "all" | "range";
+type LineMode = "simple" | "detailed";
+
+const EMPTY_BANK: InvoiceBankDetails = {
+  accountName: "",
+  bankName: "",
+  accountNo: "",
+  iban: "",
+  swift: "",
+  currency: "",
+};
 
 function defaultBillNumber() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const r = Math.floor(Math.random() * 900) + 100;
-  return `BILL-${y}${m}${day}-${r}`;
+  const y = new Date().getFullYear();
+  const seq = String(Math.floor(Math.random() * 900) + 100).padStart(3, "0");
+  return `PL/INV/${y}/${seq}`;
 }
 
 function todayIso() {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function parseAmount(raw: string): number {
@@ -50,19 +56,31 @@ function dateRangeFromItems(items: ExpenseItem[]): { start: string; end: string 
 
 function loadBillerProfile(): BillerProfile {
   if (typeof window === "undefined") {
-    return { fromName: "", fromEmail: "", fromPhone: "" };
+    return { fromName: "", fromAddress: "", fromEmail: "", fromPhone: "" };
   }
   try {
     const raw = localStorage.getItem(BILLER_PROFILE_KEY);
-    if (!raw) return { fromName: "", fromEmail: "", fromPhone: "" };
+    if (!raw) return { fromName: "", fromAddress: "", fromEmail: "", fromPhone: "" };
     const parsed = JSON.parse(raw) as BillerProfile & { fromAddress?: string };
     return {
       fromName: parsed.fromName ?? "",
-      fromEmail: parsed.fromEmail ?? parsed.fromAddress ?? "",
+      fromAddress: parsed.fromAddress ?? "",
+      fromEmail: parsed.fromEmail ?? "",
       fromPhone: parsed.fromPhone ?? "",
     };
   } catch {
-    return { fromName: "", fromEmail: "", fromPhone: "" };
+    return { fromName: "", fromAddress: "", fromEmail: "", fromPhone: "" };
+  }
+}
+
+function loadBankProfile(): InvoiceBankDetails {
+  if (typeof window === "undefined") return { ...EMPTY_BANK };
+  try {
+    const raw = localStorage.getItem(BANK_PROFILE_KEY);
+    if (!raw) return { ...EMPTY_BANK };
+    return { ...EMPTY_BANK, ...(JSON.parse(raw) as InvoiceBankDetails) };
+  } catch {
+    return { ...EMPTY_BANK };
   }
 }
 
@@ -83,18 +101,31 @@ function FaturarPageContent() {
 
   const [billNumber, setBillNumber] = useState(defaultBillNumber);
   const [billDate, setBillDate] = useState(todayIso);
+  const [terms, setTerms] = useState("Due on Receipt");
+  const [projectName, setProjectName] = useState("");
+  const [lineMode, setLineMode] = useState<LineMode>("simple");
+  const [itemDescription, setItemDescription] = useState("expenses");
+
   const [toName, setToName] = useState("");
+  const [toAddress, setToAddress] = useState("");
   const [toEmail, setToEmail] = useState("");
   const [toPhone, setToPhone] = useState("");
+
   const [fromName, setFromName] = useState("");
+  const [fromAddress, setFromAddress] = useState("");
   const [fromEmail, setFromEmail] = useState("");
   const [fromPhone, setFromPhone] = useState("");
+
   const [currency, setCurrency] = useState("");
   const [amount, setAmount] = useState("");
   const [taxPercent, setTaxPercent] = useState("0");
   const [totalAmount, setTotalAmount] = useState("");
   const [totalManual, setTotalManual] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(
+    "This is a computer-generated invoice no signature required. Thank you for your business!",
+  );
+
+  const [bank, setBank] = useState<InvoiceBankDetails>({ ...EMPTY_BANK });
 
   const clientExpenses = useMemo(() => {
     if (!clientName) return [];
@@ -116,37 +147,68 @@ function FaturarPageContent() {
     return Array.from(map.entries()).map(([cur, total]) => ({ currency: cur, total }));
   }, [clientExpenses]);
 
-  const lineItems = useMemo(
-    () =>
-      clientExpenses.map((item) => ({
-        description: item.merchant || item.category,
-        amount: item.amount,
-        date: item.date,
-      })),
-    [clientExpenses],
-  );
-
   const computedTotal = useMemo(() => {
     return computeTotalAmount(parseAmount(amount), parseAmount(taxPercent));
   }, [amount, taxPercent]);
 
+  const lineItems = useMemo(() => {
+    const total = parseAmount(amount);
+    const simpleLabel = itemDescription.trim() || t("invoice.itemDescriptionDefault");
+
+    if (lineMode === "detailed" && clientExpenses.length > 0) {
+      const cur = currency.trim().toUpperCase();
+      const filtered = cur
+        ? clientExpenses.filter((item) => item.currency.toUpperCase() === cur)
+        : clientExpenses;
+      return filtered.map((item) => ({
+        description: item.merchant || item.category,
+        duration: 1,
+        rate: item.amount,
+        amount: item.amount,
+      }));
+    }
+
+    if (total <= 0) return [];
+    return [
+      {
+        description: simpleLabel,
+        duration: 1,
+        rate: total,
+        amount: total,
+      },
+    ];
+  }, [amount, clientExpenses, currency, itemDescription, lineMode, t]);
+
   const invoiceLabels = useMemo<InvoiceLabels>(
     () => ({
       documentTitle: t("invoice.pdfTitle"),
-      billNumber: t("invoice.billNumber"),
-      date: t("invoice.date"),
+      billNumber: t("invoice.billNumberLabel"),
+      date: t("invoice.dateLabel"),
+      terms: t("invoice.terms"),
+      projectName: t("invoice.projectName"),
       billTo: t("invoice.billTo"),
       from: t("invoice.from"),
       email: t("invoice.email"),
       phone: t("invoice.phone"),
-      description: t("invoice.description"),
+      address: t("invoice.address"),
+      description: t("invoice.itemAndDescription"),
+      duration: t("invoice.duration"),
+      rate: t("invoice.rate"),
       amount: t("invoice.amountCol"),
       subtotal: t("invoice.subtotal"),
       tax: t("invoice.taxLine"),
+      taxZero: t("invoice.taxZero"),
       total: t("invoice.totalAmount"),
       notes: t("invoice.notes"),
-      lineItems: t("invoice.lineItems"),
-      tableDate: t("invoice.tableDate"),
+      bankDetails: t("invoice.bankDetails"),
+      bankAccountName: t("invoice.bankAccountName"),
+      bankName: t("invoice.bankName"),
+      bankAccountNo: t("invoice.bankAccountNo"),
+      bankIban: t("invoice.bankIban"),
+      bankSwift: t("invoice.bankSwift"),
+      bankCurrency: t("invoice.bankCurrency"),
+      tableNum: t("invoice.tableNum"),
+      itemDescription: t("invoice.itemDescriptionDefault"),
     }),
     [t],
   );
@@ -155,10 +217,14 @@ function FaturarPageContent() {
     () => ({
       billNumber: billNumber.trim() || defaultBillNumber(),
       date: billDate,
+      terms: terms.trim(),
+      projectName: projectName.trim(),
       toName: toName.trim(),
+      toAddress: toAddress.trim(),
       toEmail: toEmail.trim(),
       toPhone: toPhone.trim(),
       fromName: fromName.trim(),
+      fromAddress: fromAddress.trim(),
       fromEmail: fromEmail.trim(),
       fromPhone: fromPhone.trim(),
       currency: currency.trim().toUpperCase(),
@@ -167,19 +233,25 @@ function FaturarPageContent() {
       totalAmount: totalManual ? parseAmount(totalAmount) : computedTotal,
       notes,
       lineItems,
+      bank,
     }),
     [
       amount,
+      bank,
       billDate,
       billNumber,
       computedTotal,
       currency,
+      fromAddress,
       fromEmail,
       fromName,
       fromPhone,
       lineItems,
       notes,
+      projectName,
       taxPercent,
+      terms,
+      toAddress,
       toEmail,
       toName,
       toPhone,
@@ -205,10 +277,13 @@ function FaturarPageContent() {
     const primary = totals[0];
     if (primary) {
       setCurrency(primary.currency);
-      setAmount(primary.total.toFixed(2));
+      setAmount(primary.total.toFixed(3));
       setTotalManual(false);
+      if (!bank.currency) {
+        setBank((prev) => ({ ...prev, currency: primary.currency }));
+      }
     }
-  }, []);
+  }, [bank.currency]);
 
   useEffect(() => {
     void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
@@ -222,14 +297,14 @@ function FaturarPageContent() {
 
         const profile = loadBillerProfile();
         setFromName(profile.fromName);
+        setFromAddress(profile.fromAddress);
         setFromEmail(profile.fromEmail);
         setFromPhone(profile.fromPhone);
+        setBank(loadBankProfile());
 
         const paramClient = searchParams.get("client");
         const initial =
-          paramClient && names.includes(paramClient)
-            ? paramClient
-            : names[0] ?? "";
+          paramClient && names.includes(paramClient) ? paramClient : names[0] ?? "";
         if (initial) setClientName(initial);
         setLoadError(null);
       })
@@ -253,26 +328,23 @@ function FaturarPageContent() {
 
   useEffect(() => {
     if (totalManual) return;
-    setTotalAmount(computedTotal.toFixed(2));
+    setTotalAmount(computedTotal.toFixed(3));
   }, [computedTotal, totalManual]);
 
   useEffect(() => {
-    const profile: BillerProfile = { fromName, fromEmail, fromPhone };
     try {
-      localStorage.setItem(BILLER_PROFILE_KEY, JSON.stringify(profile));
+      localStorage.setItem(
+        BILLER_PROFILE_KEY,
+        JSON.stringify({ fromName, fromAddress, fromEmail, fromPhone }),
+      );
+      localStorage.setItem(BANK_PROFILE_KEY, JSON.stringify(bank));
     } catch {
       // Ignora falhas de storage.
     }
-  }, [fromEmail, fromName, fromPhone]);
+  }, [bank, fromAddress, fromEmail, fromName, fromPhone]);
 
-  function handleAmountChange(value: string) {
-    setAmount(value);
-    setTotalManual(false);
-  }
-
-  function handleTaxChange(value: string) {
-    setTaxPercent(value);
-    setTotalManual(false);
+  function updateBank(field: keyof InvoiceBankDetails, value: string) {
+    setBank((prev) => ({ ...prev, [field]: value }));
   }
 
   async function handleGeneratePdf() {
@@ -280,8 +352,7 @@ function FaturarPageContent() {
       globalThis.alert(t("invoice.toRequired"));
       return;
     }
-    const base = parseAmount(amount);
-    if (base <= 0) {
+    if (parseAmount(amount) <= 0) {
       globalThis.alert(t("invoice.amountRequired"));
       return;
     }
@@ -294,7 +365,7 @@ function FaturarPageContent() {
     try {
       downloadInvoicePdf(
         { ...previewData, labels: invoiceLabels },
-        `pinmybill-bill-${previewData.billNumber}.pdf`,
+        `pinmybill-bill-${previewData.billNumber.replace(/\//g, "-")}.pdf`,
       );
     } finally {
       setPdfGenerating(false);
@@ -341,7 +412,6 @@ function FaturarPageContent() {
                       )}
                     </select>
                   </label>
-
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
                     {t("invoice.periodMode")}
                     <select
@@ -353,7 +423,6 @@ function FaturarPageContent() {
                       <option value="range">{t("invoice.periodRange")}</option>
                     </select>
                   </label>
-
                   {periodMode === "range" ? (
                     <div className="grid grid-cols-2 gap-3">
                       <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
@@ -376,20 +445,25 @@ function FaturarPageContent() {
                       </label>
                     </div>
                   ) : null}
-
                   <div className="rounded-xl bg-pin-teal-soft/50 px-3 py-2 text-sm text-pin-muted dark:bg-teal-950/30">
                     <p>{t("invoice.expenseCount", { count: String(clientExpenses.length) })}</p>
-                    {totalsByCurrency.length > 1 ? (
-                      <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
-                        {t("invoice.multiCurrencyHint")}
-                      </p>
-                    ) : null}
                     {totalsByCurrency.map((row) => (
                       <p key={row.currency} className="mt-1 font-medium text-pin-ink">
-                        {row.currency}: {row.total.toFixed(2)}
+                        {row.currency}: {row.total.toFixed(3)}
                       </p>
                     ))}
                   </div>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.lineMode")}
+                    <select
+                      value={lineMode}
+                      onChange={(e) => setLineMode(e.target.value as LineMode)}
+                      className="pin-field"
+                    >
+                      <option value="simple">{t("invoice.lineModeSimple")}</option>
+                      <option value="detailed">{t("invoice.lineModeDetailed")}</option>
+                    </select>
+                  </label>
                 </div>
               </section>
 
@@ -402,12 +476,13 @@ function FaturarPageContent() {
                     void handleGeneratePdf();
                   }}
                 >
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
                     {t("invoice.billNumber")}
                     <input
                       value={billNumber}
                       onChange={(e) => setBillNumber(e.target.value)}
                       className="pin-field"
+                      placeholder="PL/INV/2026/005"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
@@ -419,41 +494,24 @@ function FaturarPageContent() {
                       className="pin-field"
                     />
                   </label>
-
-                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-pin-accent">
-                    {t("invoice.billTo")}
-                  </p>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.terms")}
+                    <input
+                      value={terms}
+                      onChange={(e) => setTerms(e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                    {t("invoice.to")}
+                    {t("invoice.projectName")}
                     <input
-                      value={toName}
-                      onChange={(e) => setToName(e.target.value)}
-                      className="pin-field pin-field-orange-focus"
-                      placeholder={t("invoice.toPh")}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                    {t("invoice.email")}
-                    <input
-                      type="email"
-                      value={toEmail}
-                      onChange={(e) => setToEmail(e.target.value)}
+                      value={projectName}
+                      onChange={(e) => setProjectName(e.target.value)}
                       className="pin-field"
-                      placeholder={t("invoice.toEmailPh")}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                    {t("invoice.phone")}
-                    <input
-                      type="tel"
-                      value={toPhone}
-                      onChange={(e) => setToPhone(e.target.value)}
-                      className="pin-field"
-                      placeholder={t("invoice.toPhonePh")}
                     />
                   </label>
 
-                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-pin-accent">
+                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
                     {t("invoice.from")}
                   </p>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
@@ -462,18 +520,6 @@ function FaturarPageContent() {
                       value={fromName}
                       onChange={(e) => setFromName(e.target.value)}
                       className="pin-field"
-                      placeholder={t("invoice.fromPh")}
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                    {t("invoice.email")}
-                    <input
-                      type="email"
-                      value={fromEmail}
-                      onChange={(e) => setFromEmail(e.target.value)}
-                      className="pin-field"
-                      placeholder={t("invoice.addressPh")}
-                      autoComplete="email"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
@@ -483,14 +529,83 @@ function FaturarPageContent() {
                       value={fromPhone}
                       onChange={(e) => setFromPhone(e.target.value)}
                       className="pin-field"
-                      placeholder={t("invoice.phonePh")}
-                      autoComplete="tel"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.email")}
+                    <input
+                      type="email"
+                      value={fromEmail}
+                      onChange={(e) => setFromEmail(e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.address")}
+                    <textarea
+                      value={fromAddress}
+                      onChange={(e) => setFromAddress(e.target.value)}
+                      className="pin-field min-h-[3.5rem] resize-y"
+                      rows={2}
                     />
                   </label>
 
-                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-pin-accent">
+                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+                    {t("invoice.billTo")}
+                  </p>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.to")}
+                    <input
+                      value={toName}
+                      onChange={(e) => setToName(e.target.value)}
+                      className="pin-field pin-field-orange-focus"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.clientAddress")}
+                    <textarea
+                      value={toAddress}
+                      onChange={(e) => setToAddress(e.target.value)}
+                      className="pin-field min-h-[3.5rem] resize-y"
+                      rows={2}
+                      placeholder={t("invoice.clientAddressPh")}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.email")}
+                    <input
+                      type="email"
+                      value={toEmail}
+                      onChange={(e) => setToEmail(e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.phone")}
+                    <input
+                      type="tel"
+                      value={toPhone}
+                      onChange={(e) => setToPhone(e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+
+                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
                     {t("invoice.amountsHeading")}
                   </p>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.itemAndDescription")}
+                    <input
+                      value={itemDescription}
+                      onChange={(e) => setItemDescription(e.target.value)}
+                      className="pin-field"
+                      disabled={lineMode === "detailed"}
+                      placeholder={t("invoice.itemDescriptionDefault")}
+                    />
+                    {lineMode === "detailed" ? (
+                      <span className="text-xs text-pin-soft">{t("invoice.lineModeDetailedHint")}</span>
+                    ) : null}
+                  </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
                     {t("common.currency")}
                     <input
@@ -505,9 +620,12 @@ function FaturarPageContent() {
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.001"
                       value={amount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
+                      onChange={(e) => {
+                        setAmount(e.target.value);
+                        setTotalManual(false);
+                      }}
                       className="pin-field"
                     />
                   </label>
@@ -518,7 +636,10 @@ function FaturarPageContent() {
                       min="0"
                       step="0.01"
                       value={taxPercent}
-                      onChange={(e) => handleTaxChange(e.target.value)}
+                      onChange={(e) => {
+                        setTaxPercent(e.target.value);
+                        setTotalManual(false);
+                      }}
                       className="pin-field"
                     />
                   </label>
@@ -527,7 +648,7 @@ function FaturarPageContent() {
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="0.001"
                       value={totalAmount}
                       onChange={(e) => {
                         setTotalAmount(e.target.value);
@@ -543,8 +664,60 @@ function FaturarPageContent() {
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="pin-field min-h-[4rem] resize-y"
-                      rows={2}
-                      maxLength={500}
+                      rows={3}
+                    />
+                  </label>
+
+                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+                    {t("invoice.bankDetails")}
+                  </p>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.bankAccountName")}
+                    <input
+                      value={bank.accountName}
+                      onChange={(e) => updateBank("accountName", e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.bankName")}
+                    <input
+                      value={bank.bankName}
+                      onChange={(e) => updateBank("bankName", e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.bankAccountNo")}
+                    <input
+                      value={bank.accountNo}
+                      onChange={(e) => updateBank("accountNo", e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                    {t("invoice.bankIban")}
+                    <input
+                      value={bank.iban}
+                      onChange={(e) => updateBank("iban", e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.bankSwift")}
+                    <input
+                      value={bank.swift}
+                      onChange={(e) => updateBank("swift", e.target.value)}
+                      className="pin-field"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                    {t("invoice.bankCurrency")}
+                    <input
+                      value={bank.currency}
+                      onChange={(e) => updateBank("currency", e.target.value.toUpperCase())}
+                      className="pin-field"
+                      maxLength={12}
                     />
                   </label>
 
@@ -561,7 +734,7 @@ function FaturarPageContent() {
               </section>
             </div>
 
-            <section className="pin-card p-4 md:p-6">
+            <section className="pin-card p-4 md:p-6 xl:sticky xl:top-4 xl:self-start">
               <h2 className="mb-4 text-lg font-bold text-pin-ink">{t("invoice.previewHeading")}</h2>
               <InvoicePreview data={previewData} labels={invoiceLabels} />
             </section>

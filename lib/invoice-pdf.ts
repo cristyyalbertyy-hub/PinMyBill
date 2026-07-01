@@ -1,13 +1,25 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { InvoiceFormData, InvoiceLabels } from "@/lib/invoice-types";
-import { computeTaxAmount } from "@/lib/invoice-types";
+import {
+  INVOICE_ORANGE,
+  computeTaxAmount,
+  fmtInvoiceAmount,
+} from "@/lib/invoice-types";
 
 export type InvoicePdfData = InvoiceFormData & { labels: InvoiceLabels };
 
-function fmtAmount(n: number) {
-  if (!Number.isFinite(n)) return "0.00";
-  return n.toFixed(2);
+function drawMultiline(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+) {
+  const lines = doc.splitTextToSize(text, maxWidth);
+  doc.text(lines, x, y);
+  return y + lines.length * lineHeight;
 }
 
 export function generateInvoicePdf(data: InvoicePdfData): jsPDF {
@@ -15,140 +27,205 @@ export function generateInvoicePdf(data: InvoicePdfData): jsPDF {
   const margin = 48;
   const pageWidth = doc.internal.pageSize.getWidth();
   const contentWidth = pageWidth - margin * 2;
-  const accent: [number, number, number] = [13, 148, 136];
+  const orange = INVOICE_ORANGE;
 
-  doc.setFillColor(...accent);
-  doc.rect(0, 0, pageWidth, 6, "F");
+  let y = 48;
 
-  let y = 42;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(...accent);
-  doc.text(data.labels.documentTitle, pageWidth - margin, y, { align: "right" });
-
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
   doc.setFont("helvetica", "normal");
-  doc.text(`${data.labels.billNumber}: ${data.billNumber}`, pageWidth - margin, y + 18, {
-    align: "right",
-  });
-  doc.text(`${data.labels.date}: ${data.date}`, pageWidth - margin, y + 32, { align: "right" });
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(10);
   doc.setTextColor(28, 25, 23);
-  doc.text(data.fromName || "—", margin, y);
-
-  y += 20;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  if (data.fromEmail) {
-    doc.text(`${data.labels.email}: ${data.fromEmail}`, margin, y);
+  if (data.fromName) {
+    doc.text(data.fromName, margin, y);
     y += 14;
   }
   if (data.fromPhone) {
-    doc.text(`${data.labels.phone}: ${data.fromPhone}`, margin, y);
+    doc.text(data.fromPhone, margin, y);
     y += 14;
   }
+  if (data.fromEmail) {
+    doc.text(data.fromEmail, margin, y);
+    y += 14;
+  }
+  if (data.fromAddress) {
+    y = drawMultiline(doc, data.fromAddress, margin, y, contentWidth * 0.45, 13);
+  }
 
-  y = Math.max(y + 10, 118);
-
-  doc.setFillColor(245, 245, 244);
-  doc.roundedRect(margin, y, contentWidth, 62, 4, 4, "F");
+  const headerLeftBottom = y;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...accent);
-  doc.text(data.labels.billTo.toUpperCase(), margin + 14, y + 18);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(28, 25, 23);
-  doc.text(data.toName || "—", margin + 14, y + 36);
+  doc.setFontSize(28);
+  doc.setTextColor(...orange);
+  doc.text(data.labels.documentTitle, pageWidth - margin, 52, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  let toDetailY = y + 50;
+  doc.setTextColor(28, 25, 23);
+  doc.text(`${data.labels.billNumber} ${data.billNumber}`, pageWidth - margin, 72, {
+    align: "right",
+  });
+
+  y = Math.max(headerLeftBottom, 88) + 20;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(28, 25, 23);
+  doc.text(data.labels.billTo, margin, y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`${data.labels.date} : ${data.date}`, pageWidth - margin, y, { align: "right" });
+  y += 16;
+  doc.text(`${data.labels.terms} : ${data.terms || "—"}`, pageWidth - margin, y, {
+    align: "right",
+  });
+
+  y += 18;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(data.toName || "—", margin, y);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(60, 60, 60);
+  if (data.toAddress) {
+    y = drawMultiline(doc, data.toAddress, margin, y, contentWidth * 0.5, 13);
+  }
   if (data.toEmail) {
-    doc.text(data.toEmail, margin + 14, toDetailY);
-    toDetailY += 12;
+    doc.text(data.toEmail, margin, y);
+    y += 13;
   }
   if (data.toPhone) {
-    doc.text(data.toPhone, margin + 14, toDetailY);
+    doc.text(data.toPhone, margin, y);
+    y += 13;
   }
 
-  y += 78;
+  y += 8;
+  doc.setTextColor(28, 25, 23);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${data.labels.projectName} :`, margin, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(data.projectName || "—", margin + doc.getTextWidth(`${data.labels.projectName} : `) + 4, y);
+  y += 22;
 
   const tableBody =
     data.lineItems.length > 0
-      ? data.lineItems.map((item) => [
+      ? data.lineItems.map((item, idx) => [
+          String(idx + 1),
           item.description,
-          item.date ?? "",
-          `${data.currency} ${fmtAmount(item.amount)}`,
+          fmtInvoiceAmount(item.duration),
+          fmtInvoiceAmount(item.rate),
+          fmtInvoiceAmount(item.amount),
         ])
-      : [[data.labels.description, data.date, `${data.currency} ${fmtAmount(data.amount)}`]];
+      : [
+          [
+            "1",
+            data.labels.itemDescription,
+            "1.00",
+            fmtInvoiceAmount(data.amount),
+            fmtInvoiceAmount(data.amount),
+          ],
+        ];
 
   autoTable(doc, {
     startY: y,
-    head: [[data.labels.description, data.labels.tableDate, data.labels.amount]],
+    head: [
+      [
+        data.labels.tableNum,
+        data.labels.description,
+        data.labels.duration,
+        data.labels.rate,
+        data.labels.amount,
+      ],
+    ],
     body: tableBody,
     margin: { left: margin, right: margin },
-    styles: { fontSize: 9, cellPadding: 6, textColor: [28, 25, 23] },
+    styles: { fontSize: 9, cellPadding: 5, textColor: [28, 25, 23] },
     headStyles: {
-      fillColor: accent,
+      fillColor: orange,
       textColor: 255,
       fontStyle: "bold",
+      halign: "left",
     },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.52 },
-      1: { cellWidth: contentWidth * 0.22 },
-      2: { cellWidth: contentWidth * 0.26, halign: "right" },
+      0: { cellWidth: 28, halign: "center" },
+      1: { cellWidth: contentWidth * 0.38 },
+      2: { cellWidth: contentWidth * 0.14, halign: "right" },
+      3: { cellWidth: contentWidth * 0.18, halign: "right" },
+      4: { cellWidth: contentWidth * 0.18, halign: "right" },
     },
     theme: "grid",
   });
 
   type DocWithTable = typeof doc & { lastAutoTable?: { finalY: number } };
-  y = ((doc as DocWithTable).lastAutoTable?.finalY ?? y + 40) + 24;
+  y = ((doc as DocWithTable).lastAutoTable?.finalY ?? y + 40) + 18;
 
   const taxAmount = computeTaxAmount(data.amount, data.taxPercent);
-  const summaryX = pageWidth - margin - 170;
+  const summaryX = pageWidth - margin - 150;
   const valueX = pageWidth - margin;
+  const taxLabel =
+    data.taxPercent === 0
+      ? data.labels.taxZero
+      : `${data.labels.tax} (${fmtInvoiceAmount(data.taxPercent)}%)`;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(80, 80, 80);
+  doc.setTextColor(28, 25, 23);
   doc.text(data.labels.subtotal, summaryX, y);
-  doc.text(`${data.currency} ${fmtAmount(data.amount)}`, valueX, y, { align: "right" });
+  doc.text(fmtInvoiceAmount(data.amount), valueX, y, { align: "right" });
   y += 16;
 
-  doc.text(`${data.labels.tax} (${fmtAmount(data.taxPercent)}%)`, summaryX, y);
-  doc.text(`${data.currency} ${fmtAmount(taxAmount)}`, valueX, y, { align: "right" });
-  y += 22;
+  doc.text(taxLabel, summaryX, y);
+  doc.text(fmtInvoiceAmount(taxAmount), valueX, y, { align: "right" });
+  y += 18;
 
-  doc.setFillColor(...accent);
-  doc.roundedRect(summaryX - 8, y - 12, 178, 28, 4, 4, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
-  doc.text(data.labels.total, summaryX, y + 4);
-  doc.text(`${data.currency} ${fmtAmount(data.totalAmount)}`, valueX - 8, y + 4, {
-    align: "right",
-  });
-  y += 36;
+  doc.setFontSize(11);
+  doc.text(data.labels.total, summaryX, y);
+  const totalStr = data.currency
+    ? `${data.currency === "EUR" ? "€" : data.currency}${fmtInvoiceAmount(data.totalAmount)}`
+    : fmtInvoiceAmount(data.totalAmount);
+  doc.text(totalStr, valueX, y, { align: "right" });
+  y += 28;
+
+  const footerStartY = y;
 
   if (data.notes.trim()) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.setTextColor(28, 25, 23);
     doc.text(data.labels.notes, margin, y);
     y += 14;
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(80, 80, 80);
-    const lines = doc.splitTextToSize(data.notes.trim(), contentWidth);
-    doc.text(lines, margin, y);
+    doc.setTextColor(60, 60, 60);
+    y = drawMultiline(doc, data.notes.trim(), margin, y, contentWidth * 0.55, 12);
+    y += 8;
+  }
+
+  const bankY = Math.max(footerStartY, y);
+  let bankLineY = bankY;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(28, 25, 23);
+  doc.text(data.labels.bankDetails, margin, bankLineY);
+  bankLineY += 16;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+
+  const bankRows: [string, string][] = [
+    [data.labels.bankAccountName, data.bank.accountName],
+    [data.labels.bankName, data.bank.bankName],
+    [data.labels.bankAccountNo, data.bank.accountNo],
+    [data.labels.bankIban, data.bank.iban],
+    [data.labels.bankSwift, data.bank.swift],
+    [data.labels.bankCurrency, data.bank.currency],
+  ];
+
+  for (const [label, value] of bankRows) {
+    doc.text(`${label} ${value || ""}`, margin, bankLineY);
+    bankLineY += 13;
   }
 
   return doc;
