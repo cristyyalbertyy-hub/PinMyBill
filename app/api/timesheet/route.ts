@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
+import { computeTotalHours } from "@/lib/timesheet-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -9,19 +10,23 @@ function formatRow(row: {
   id: string;
   clientName: string;
   workDate: Date;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
   days: { toNumber(): number };
   rate: { toNumber(): number };
   currency: string;
-  description: string | null;
 }) {
   return {
     id: row.id,
     clientName: row.clientName,
     workDate: row.workDate.toISOString().slice(0, 10),
-    days: row.days.toNumber(),
+    startTime: row.startTime,
+    endTime: row.endTime,
+    breakMinutes: row.breakMinutes,
+    totalHours: row.days.toNumber(),
     rate: row.rate.toNumber(),
     currency: row.currency,
-    description: row.description,
   };
 }
 
@@ -54,10 +59,11 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       clientName: string;
       workDate: string;
-      days: number;
+      startTime?: string;
+      endTime?: string;
+      breakMinutes?: number;
       rate: number;
       currency: string;
-      description?: string;
     };
 
     const clientName = body.clientName?.trim();
@@ -65,10 +71,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cliente e data obrigatorios." }, { status: 400 });
     }
 
-    const days = Number(body.days);
+    const startTime = body.startTime?.trim() || "09:00";
+    const endTime = body.endTime?.trim() || "17:00";
+    const breakMinutes = Math.max(0, Number(body.breakMinutes) || 0);
     const rate = Number(body.rate);
-    if (!Number.isFinite(days) || days <= 0 || !Number.isFinite(rate) || rate < 0) {
-      return NextResponse.json({ error: "Dias e rate invalidos." }, { status: 400 });
+    const totalHours = computeTotalHours(startTime, endTime, breakMinutes);
+
+    if (!Number.isFinite(rate) || rate < 0) {
+      return NextResponse.json({ error: "Rate invalida." }, { status: 400 });
+    }
+    if (totalHours <= 0) {
+      return NextResponse.json({ error: "Horas invalidas." }, { status: 400 });
     }
 
     const created = await prisma.timesheetEntry.create({
@@ -76,10 +89,12 @@ export async function POST(request: Request) {
         userId: authz.userId,
         clientName,
         workDate: new Date(body.workDate),
-        days,
+        startTime,
+        endTime,
+        breakMinutes,
+        days: totalHours,
         rate,
         currency: body.currency?.trim().toUpperCase() || "EUR",
-        description: body.description?.trim() || null,
       },
     });
     return NextResponse.json(formatRow(created));

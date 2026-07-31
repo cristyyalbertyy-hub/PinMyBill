@@ -23,10 +23,12 @@ export type TimesheetRow = {
   id: string;
   clientName: string;
   workDate: string;
-  days: number;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  totalHours: number;
   rate: number;
   currency: string;
-  description: string | null;
 };
 
 export const TIMESHEET_IMPORT_KEY = "pinmybill-timesheet-import";

@@ -6,6 +6,7 @@ import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
 import type { ClientDetail, TimesheetImportPayload, TimesheetRow } from "@/lib/profile-types";
 import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
+import { computeTotalHours, formatHours } from "@/lib/timesheet-utils";
 
 function todayIso() {
   const d = new Date();
@@ -26,7 +27,7 @@ function TimesheetContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientDetail[]>([]);
   const [clientName, setClientName] = useState("");
-  const [dailyRate, setDailyRate] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
   const [currency, setCurrency] = useState("EUR");
   const [rows, setRows] = useState<TimesheetRow[]>([]);
   const [saving, setSaving] = useState(false);
@@ -41,7 +42,7 @@ function TimesheetContent() {
     const data = (await res.json()) as TimesheetRow[];
     setRows(data);
     if (data.length > 0) {
-      setDailyRate(String(data[data.length - 1].rate));
+      setHourlyRate(String(data[data.length - 1].rate));
       setCurrency(data[data.length - 1].currency);
     }
   }, []);
@@ -74,20 +75,21 @@ function TimesheetContent() {
     void loadRows(clientName).catch(() => setLoadError(t("timesheet.loadError")));
   }, [clientName, loadRows, ready, t]);
 
+  const rate = parseNum(hourlyRate);
+
   const totals = useMemo(() => {
-    let totalDays = 0;
-    let grandTotal = 0;
+    let totalHours = 0;
     for (const row of rows) {
-      totalDays += row.days;
-      grandTotal += row.days * row.rate;
+      totalHours += row.totalHours;
     }
-    return { totalDays, grandTotal };
-  }, [rows]);
+    return {
+      totalHours,
+      grandTotal: totalHours * rate,
+    };
+  }, [rate, rows]);
 
   async function addRow() {
-    if (!clientName.trim()) return;
-    const rate = parseNum(dailyRate);
-    if (rate <= 0) return;
+    if (!clientName.trim() || rate <= 0) return;
     setSaving(true);
     try {
       const res = await fetch("/api/timesheet", {
@@ -96,10 +98,11 @@ function TimesheetContent() {
         body: JSON.stringify({
           clientName: clientName.trim(),
           workDate: todayIso(),
-          days: 1,
+          startTime: "09:00",
+          endTime: "17:00",
+          breakMinutes: 60,
           rate,
           currency: currency.trim().toUpperCase(),
-          description: t("timesheet.description"),
         }),
       });
       if (!res.ok) throw new Error("save");
@@ -111,7 +114,10 @@ function TimesheetContent() {
     }
   }
 
-  async function updateRow(id: string, patch: Partial<TimesheetRow>) {
+  async function updateRow(
+    id: string,
+    patch: Partial<Pick<TimesheetRow, "workDate" | "startTime" | "endTime" | "breakMinutes">>,
+  ) {
     const res = await fetch(`/api/timesheet/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -134,17 +140,19 @@ function TimesheetContent() {
   }
 
   function importToInvoice() {
-    if (rows.length === 0 || totals.grandTotal <= 0) return;
+    if (rows.length === 0 || totals.grandTotal <= 0 || rate <= 0) return;
     const payload: TimesheetImportPayload = {
       clientName,
       currency: currency.trim().toUpperCase(),
       total: totals.grandTotal,
-      lineItems: rows.map((row) => ({
-        description: row.description || row.workDate,
-        duration: row.days,
-        rate: row.rate,
-        amount: row.days * row.rate,
-      })),
+      lineItems: [
+        {
+          description: t("timesheet.invoiceLine", { client: clientName }),
+          duration: totals.totalHours,
+          rate,
+          amount: totals.grandTotal,
+        },
+      ],
     };
     try {
       sessionStorage.setItem(TIMESHEET_IMPORT_KEY, JSON.stringify(payload));
@@ -155,8 +163,8 @@ function TimesheetContent() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
-      <div className="mx-auto max-w-4xl">
+    <main className="pin-page px-4 pb-8 md:p-10">
+      <div className="mx-auto max-w-5xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">
           {t("timesheet.title")}
         </h1>
@@ -173,168 +181,200 @@ function TimesheetContent() {
         {!ready ? (
           <p className="text-sm text-pin-muted">{t("common.loading")}</p>
         ) : (
-          <div className="grid gap-4">
-            <section className="pin-card p-4 md:p-6">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("timesheet.client")}
-                  <select
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="pin-field"
-                  >
-                    {clients.length === 0 ? (
-                      <option value="">{t("edit.noClientsOption")}</option>
-                    ) : (
-                      clients.map((c) => (
-                        <option key={c.id} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("timesheet.dailyRate")}
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={dailyRate}
-                    onChange={(e) => setDailyRate(e.target.value)}
-                    className="pin-field"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("timesheet.currency")}
-                  <input
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-                    className="pin-field"
-                    maxLength={12}
-                  />
-                </label>
-              </div>
-              <button
-                type="button"
-                onClick={() => void addRow()}
-                disabled={saving || !clientName || parseNum(dailyRate) <= 0}
-                className="mt-4 pin-btn-primary min-h-10 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
-              >
-                {t("timesheet.addRow")}
-              </button>
-            </section>
+          <section className="pin-card p-4 md:p-6">
+            <div className="grid gap-3 border-b border-stone-200/80 pb-5 sm:grid-cols-3 dark:border-stone-700">
+              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                {t("timesheet.client")}
+                <select
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="pin-field"
+                >
+                  {clients.length === 0 ? (
+                    <option value="">{t("edit.noClientsOption")}</option>
+                  ) : (
+                    clients.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                {t("timesheet.hourlyRate")}
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(e.target.value)}
+                  className="pin-field"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                {t("timesheet.currency")}
+                <input
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                  className="pin-field"
+                  maxLength={12}
+                />
+              </label>
+            </div>
 
-            {rows.length === 0 ? (
-              <p className="text-sm text-pin-muted">{t("timesheet.empty")}</p>
-            ) : (
-              <>
-                <section className="pin-card overflow-x-auto p-4 md:p-6">
-                  <table className="w-full min-w-[36rem] text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-stone-200 text-xs font-bold uppercase tracking-wider text-pin-muted dark:border-stone-700">
-                        <th className="pb-2 pr-2">{t("timesheet.date")}</th>
-                        <th className="pb-2 pr-2">{t("timesheet.days")}</th>
-                        <th className="pb-2 pr-2">{t("timesheet.rate")}</th>
-                        <th className="pb-2 pr-2">{t("timesheet.description")}</th>
-                        <th className="pb-2 pr-2 text-right">{t("timesheet.lineTotal")}</th>
-                        <th className="pb-2" />
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[40rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-stone-200 text-xs font-bold uppercase tracking-wider text-pin-muted dark:border-stone-700">
+                    <th className="pb-2 pr-2">{t("timesheet.date")}</th>
+                    <th className="pb-2 pr-2">{t("timesheet.startTime")}</th>
+                    <th className="pb-2 pr-2">{t("timesheet.endTime")}</th>
+                    <th className="pb-2 pr-2">{t("timesheet.break")}</th>
+                    <th className="pb-2 pr-2 text-right">{t("timesheet.totalHours")}</th>
+                    <th className="pb-2 w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const liveHours = computeTotalHours(
+                      row.startTime,
+                      row.endTime,
+                      row.breakMinutes,
+                    );
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-stone-100 dark:border-stone-800"
+                      >
+                        <td className="py-2 pr-2">
+                          <input
+                            type="date"
+                            defaultValue={row.workDate}
+                            onBlur={(e) => {
+                              if (e.target.value !== row.workDate) {
+                                void updateRow(row.id, { workDate: e.target.value });
+                              }
+                            }}
+                            className="pin-field min-w-[9rem] py-1 text-sm"
+                          />
+                        </td>
+                        <td className="py-2 pr-2">
+                          <input
+                            type="time"
+                            defaultValue={row.startTime}
+                            onBlur={(e) => {
+                              if (e.target.value !== row.startTime) {
+                                void updateRow(row.id, { startTime: e.target.value });
+                              }
+                            }}
+                            className="pin-field min-w-[6rem] py-1 text-sm"
+                          />
+                        </td>
+                        <td className="py-2 pr-2">
+                          <input
+                            type="time"
+                            defaultValue={row.endTime}
+                            onBlur={(e) => {
+                              if (e.target.value !== row.endTime) {
+                                void updateRow(row.id, { endTime: e.target.value });
+                              }
+                            }}
+                            className="pin-field min-w-[6rem] py-1 text-sm"
+                          />
+                        </td>
+                        <td className="py-2 pr-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="5"
+                            defaultValue={row.breakMinutes}
+                            onBlur={(e) => {
+                              const brk = Math.max(0, parseNum(e.target.value));
+                              if (brk !== row.breakMinutes) {
+                                void updateRow(row.id, { breakMinutes: brk });
+                              }
+                            }}
+                            className="pin-field w-20 py-1 text-sm"
+                            title={t("timesheet.breakHint")}
+                          />
+                        </td>
+                        <td className="py-2 pr-2 text-right font-semibold tabular-nums text-pin-ink">
+                          {formatHours(liveHours)} h
+                        </td>
+                        <td className="py-2">
+                          <button
+                            type="button"
+                            onClick={() => void removeRow(row.id)}
+                            className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                            aria-label={t("common.remove")}
+                          >
+                            🗑
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={row.id} className="border-b border-stone-100 dark:border-stone-800">
-                          <td className="py-2 pr-2">
-                            <input
-                              type="date"
-                              defaultValue={row.workDate}
-                              onBlur={(e) => {
-                                if (e.target.value !== row.workDate) {
-                                  void updateRow(row.id, { workDate: e.target.value });
-                                }
-                              }}
-                              className="pin-field min-w-[9rem] py-1 text-sm"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              min="0.25"
-                              step="0.25"
-                              defaultValue={row.days}
-                              onBlur={(e) => {
-                                const days = parseNum(e.target.value);
-                                if (days !== row.days) void updateRow(row.id, { days });
-                              }}
-                              className="pin-field w-20 py-1 text-sm"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              defaultValue={row.rate}
-                              onBlur={(e) => {
-                                const rate = parseNum(e.target.value);
-                                if (rate !== row.rate) void updateRow(row.id, { rate });
-                              }}
-                              className="pin-field w-24 py-1 text-sm"
-                            />
-                          </td>
-                          <td className="py-2 pr-2">
-                            <input
-                              defaultValue={row.description ?? ""}
-                              onBlur={(e) => {
-                                const desc = e.target.value.trim();
-                                if (desc !== (row.description ?? "")) {
-                                  void updateRow(row.id, { description: desc || null });
-                                }
-                              }}
-                              className="pin-field min-w-[8rem] py-1 text-sm"
-                            />
-                          </td>
-                          <td className="py-2 pr-2 text-right font-semibold text-pin-ink">
-                            {(row.days * row.rate).toFixed(2)} {row.currency}
-                          </td>
-                          <td className="py-2">
-                            <button
-                              type="button"
-                              onClick={() => void removeRow(row.id)}
-                              className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                              aria-label={t("common.remove")}
-                            >
-                              🗑
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-stone-200 dark:border-stone-700">
+                    <td colSpan={4} className="pt-4 pr-2">
+                      <button
+                        type="button"
+                        onClick={() => void addRow()}
+                        disabled={saving || !clientName || rate <= 0}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-pin-teal-soft text-xl font-bold text-pin-accent ring-1 ring-teal-200 transition hover:bg-teal-100 active:scale-95 disabled:opacity-50 dark:bg-teal-950/50 dark:ring-teal-800"
+                        aria-label={t("timesheet.addDay")}
+                        title={t("timesheet.addDay")}
+                      >
+                        +
+                      </button>
+                      {rows.length === 0 ? (
+                        <span className="ml-3 text-sm text-pin-muted">{t("timesheet.empty")}</span>
+                      ) : null}
+                    </td>
+                    <td className="pt-4 pr-2 text-right">
+                      <p className="text-xs font-medium uppercase tracking-wider text-pin-muted">
+                        {t("timesheet.totalHours")}
+                      </p>
+                      <p className="text-lg font-extrabold tabular-nums text-pin-ink">
+                        {formatHours(totals.totalHours)} h
+                      </p>
+                    </td>
+                    <td />
+                  </tr>
+                  {rows.length > 0 && rate > 0 ? (
+                    <tr>
+                      <td colSpan={4} className="pb-2 pt-1 text-sm text-pin-muted">
+                        {formatHours(totals.totalHours)} h × {rate.toFixed(2)} {currency.trim().toUpperCase()}
+                      </td>
+                      <td className="pb-2 pt-1 text-right">
+                        <p className="text-xs font-medium uppercase tracking-wider text-pin-muted">
+                          {t("timesheet.grandTotal")}
+                        </p>
+                        <p className="text-xl font-extrabold tabular-nums text-pin-accent">
+                          {totals.grandTotal.toFixed(2)} {currency.trim().toUpperCase()}
+                        </p>
+                      </td>
+                      <td />
+                    </tr>
+                  ) : null}
+                </tfoot>
+              </table>
+            </div>
 
-                <section className="pin-card flex flex-wrap items-center justify-between gap-4 p-4 md:p-6">
-                  <div>
-                    <p className="text-sm text-pin-muted">
-                      {t("timesheet.totalDays")}:{" "}
-                      <span className="font-bold text-pin-ink">{totals.totalDays}</span>
-                    </p>
-                    <p className="mt-1 text-lg font-extrabold text-pin-ink">
-                      {t("timesheet.grandTotal")}: {totals.grandTotal.toFixed(2)}{" "}
-                      {currency.trim().toUpperCase()}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={importToInvoice}
-                    className="pin-btn-primary min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold"
-                  >
-                    {t("timesheet.importInvoice")}
-                  </button>
-                </section>
-              </>
-            )}
-          </div>
+            {rows.length > 0 && rate > 0 ? (
+              <div className="mt-5 flex justify-end border-t border-stone-200/80 pt-5 dark:border-stone-700">
+                <button
+                  type="button"
+                  onClick={importToInvoice}
+                  className="pin-btn-primary min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold"
+                >
+                  {t("timesheet.importInvoice")}
+                </button>
+              </div>
+            ) : null}
+          </section>
         )}
       </div>
     </main>
@@ -344,7 +384,7 @@ function TimesheetContent() {
 function TimesheetFallback() {
   const t = useT();
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page px-4 pb-8 md:p-10">
       <p className="text-sm text-pin-muted">{t("common.loading")}</p>
     </main>
   );
