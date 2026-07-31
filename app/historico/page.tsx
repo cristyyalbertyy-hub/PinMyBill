@@ -7,6 +7,7 @@ import { ExpenseTypeCircle, ExpenseTypeLegend } from "@/components/expense-type-
 import { TopNav } from "@/components/top-nav";
 import type { ExpenseItem, ExpenseType } from "@/lib/mock-data";
 import { useT } from "@/lib/i18n/context";
+import { useProject } from "@/lib/project-context";
 import { ExpenseHistoryCard } from "./expense-history-card";
 import { EditExpenseModal } from "./edit-expense-modal";
 
@@ -27,6 +28,7 @@ type DbHealth = {
 
 export default function HistoricoPage() {
   const t = useT();
+  const { ready: projectReady, activeProject } = useProject();
   const [items, setItems] = useState<ExpenseItem[]>([]);
   const [categoryNames, setCategoryNames] = useState<GroupedNames>({
     pessoal: [],
@@ -150,6 +152,15 @@ export default function HistoricoPage() {
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  useEffect(() => {
+    if (!projectReady || !ready) return;
+    if (activeProject?.name && clientNames.includes(activeProject.name)) {
+      setFilterClient(activeProject.name);
+    } else if (!activeProject) {
+      setFilterClient("");
+    }
+  }, [activeProject, clientNames, projectReady, ready]);
 
   useEffect(() => {
     void fetch("/api/health/db")
