@@ -1,0 +1,44 @@
+import type { InvoiceBankDetails } from "@/lib/invoice-types";
+
+export type UserProfileData = {
+  fromName: string;
+  fromAddress: string;
+  fromEmail: string;
+  fromPhone: string;
+  projectDirector: string;
+  bank: InvoiceBankDetails;
+};
+
+export type ClientDetail = {
+  id: string;
+  name: string;
+  startDate: string | null;
+  projectDirector: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
+export type TimesheetRow = {
+  id: string;
+  clientName: string;
+  workDate: string;
+  days: number;
+  rate: number;
+  currency: string;
+  description: string | null;
+};
+
+export const TIMESHEET_IMPORT_KEY = "pinmybill-timesheet-import";
+
+export type TimesheetImportPayload = {
+  clientName: string;
+  currency: string;
+  lineItems: Array<{
+    description: string;
+    duration: number;
+    rate: number;
+    amount: number;
+  }>;
+  total: number;
+};

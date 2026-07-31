@@ -8,8 +8,10 @@ import { useT } from "@/lib/i18n/context";
 
 const links = [
   { href: "/", key: "nav.dashboard" },
+  { href: "/new", key: "nav.new" },
   { href: "/despesas", key: "nav.entry" },
   { href: "/historico", key: "nav.history" },
+  { href: "/timesheet", key: "nav.timesheet" },
   { href: "/exportar", key: "nav.exportPdf" },
   { href: "/faturar", key: "nav.bill" },
   { href: "/categorias", key: "nav.categories" },

@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n/context";
 
 const links = [
   { href: "/", key: "mobile.home", icon: "🏠" },
-  { href: "/despesas", key: "mobile.receipts", icon: "📷" },
+  { href: "/despesas", key: "mobile.receipts", icon: "📝" },
   { href: "/historico", key: "mobile.history", icon: "🗂️" },
   { href: "/exportar", key: "mobile.pdf", icon: "📄" },
   { href: "/faturar", key: "mobile.bill", icon: "🧾" },

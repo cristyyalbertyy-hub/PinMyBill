@@ -87,5 +87,7 @@ export const config = {
     "/exportar/:path*",
     "/faturar/:path*",
     "/historico/:path*",
+    "/new",
+    "/timesheet",
   ],
 };

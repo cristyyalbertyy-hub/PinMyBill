@@ -8,6 +8,8 @@ import { useT } from "@/lib/i18n/context";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import type { InvoiceBankDetails, InvoiceFormData, InvoiceLabels } from "@/lib/invoice-types";
 import { computeTotalAmount } from "@/lib/invoice-types";
+import type { ClientDetail, TimesheetImportPayload } from "@/lib/profile-types";
+import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BILLER_PROFILE_KEY = "pinmybill-biller-profile";
@@ -21,7 +23,7 @@ type BillerProfile = {
 };
 
 type PeriodMode = "all" | "range";
-type LineMode = "simple" | "detailed";
+type LineMode = "simple" | "detailed" | "timesheet";
 
 const EMPTY_BANK: InvoiceBankDetails = {
   accountName: "",
@@ -90,6 +92,8 @@ function FaturarPageContent() {
 
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
+  const [clientDetails, setClientDetails] = useState<ClientDetail[]>([]);
+  const [timesheetImport, setTimesheetImport] = useState<TimesheetImportPayload | null>(null);
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -155,6 +159,10 @@ function FaturarPageContent() {
     const total = parseAmount(amount);
     const simpleLabel = itemDescription.trim() || t("invoice.itemDescriptionDefault");
 
+    if (lineMode === "timesheet" && timesheetImport) {
+      return timesheetImport.lineItems;
+    }
+
     if (lineMode === "detailed" && clientExpenses.length > 0) {
       const cur = currency.trim().toUpperCase();
       const filtered = cur
@@ -177,7 +185,7 @@ function FaturarPageContent() {
         amount: total,
       },
     ];
-  }, [amount, clientExpenses, currency, itemDescription, lineMode, t]);
+  }, [amount, clientExpenses, currency, itemDescription, lineMode, t, timesheetImport]);
 
   const invoiceLabels = useMemo<InvoiceLabels>(
     () => ({
@@ -260,8 +268,20 @@ function FaturarPageContent() {
     ],
   );
 
-  const applyDefaultsFromClient = useCallback((client: string, expenses: ExpenseItem[]) => {
+  const applyClientDetails = useCallback((client: string) => {
+    const detail = clientDetails.find((c) => c.name === client);
     setToName(client);
+    if (detail) {
+      setToAddress(detail.address ?? "");
+      setToEmail(detail.email ?? "");
+      setToPhone(detail.phone ?? "");
+      if (detail.startDate) setStartDate(detail.startDate);
+      if (detail.projectDirector) setProjectName(detail.projectDirector);
+    }
+  }, [clientDetails]);
+
+  const applyDefaultsFromClient = useCallback((client: string, expenses: ExpenseItem[]) => {
+    applyClientDetails(client);
     if (expenses.length === 0) {
       setAmount("");
       setCurrency("");
@@ -283,29 +303,73 @@ function FaturarPageContent() {
         setBank((prev) => ({ ...prev, currency: primary.currency }));
       }
     }
-  }, [bank.currency]);
+  }, [applyClientDetails, bank.currency]);
 
   useEffect(() => {
     void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
       .then(async ([ex, cl]) => {
         if (!ex.ok || !cl.ok) throw new Error("fetch");
         const expenses = (await ex.json()) as ExpenseItem[];
-        const clRows = (await cl.json()) as { name: string }[];
+        const clRows = (await cl.json()) as ClientDetail[];
         setExpenseItems(Array.isArray(expenses) ? expenses : []);
+        setClientDetails(clRows);
         const names = clRows.map((r) => r.name);
         setClients(names);
 
-        const profile = loadBillerProfile();
-        setFromName(profile.fromName);
-        setFromAddress(profile.fromAddress);
-        setFromEmail(profile.fromEmail);
-        setFromPhone(profile.fromPhone);
-        setBank(loadBankProfile());
+        let profileLoaded = false;
+        try {
+          const prRes = await fetch("/api/account/profile");
+          if (prRes.ok) {
+            const profile = (await prRes.json()) as {
+              fromName: string;
+              fromAddress: string;
+              fromEmail: string;
+              fromPhone: string;
+              bank: InvoiceBankDetails;
+            };
+            setFromName(profile.fromName);
+            setFromAddress(profile.fromAddress);
+            setFromEmail(profile.fromEmail);
+            setFromPhone(profile.fromPhone);
+            setBank({ ...EMPTY_BANK, ...profile.bank });
+            profileLoaded = true;
+          }
+        } catch {
+          // fallback localStorage abaixo
+        }
+
+        if (!profileLoaded) {
+          const profile = loadBillerProfile();
+          setFromName(profile.fromName);
+          setFromAddress(profile.fromAddress);
+          setFromEmail(profile.fromEmail);
+          setFromPhone(profile.fromPhone);
+          setBank(loadBankProfile());
+        }
 
         const paramClient = searchParams.get("client");
         const initial =
           paramClient && names.includes(paramClient) ? paramClient : names[0] ?? "";
         if (initial) setClientName(initial);
+
+        if (searchParams.get("fromTimesheet") === "1") {
+          try {
+            const raw = sessionStorage.getItem(TIMESHEET_IMPORT_KEY);
+            if (raw) {
+              const payload = JSON.parse(raw) as TimesheetImportPayload;
+              setTimesheetImport(payload);
+              setLineMode("timesheet");
+              setClientName(payload.clientName);
+              setCurrency(payload.currency);
+              setAmount(payload.total.toFixed(3));
+              setTotalManual(false);
+              sessionStorage.removeItem(TIMESHEET_IMPORT_KEY);
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         setLoadError(null);
       })
       .catch(() => setLoadError(t("invoice.loadError")))
@@ -462,7 +526,16 @@ function FaturarPageContent() {
                     >
                       <option value="simple">{t("invoice.lineModeSimple")}</option>
                       <option value="detailed">{t("invoice.lineModeDetailed")}</option>
+                      <option value="timesheet" disabled={!timesheetImport}>
+                        {t("invoice.lineModeTimesheet")}
+                      </option>
                     </select>
+                    {lineMode === "timesheet" ? (
+                      <span className="text-xs text-pin-soft">{t("invoice.lineModeTimesheetHint")}</span>
+                    ) : null}
+                    {lineMode === "detailed" ? (
+                      <span className="text-xs text-pin-soft">{t("invoice.lineModeDetailedHint")}</span>
+                    ) : null}
                   </label>
                 </div>
               </section>
@@ -599,11 +672,14 @@ function FaturarPageContent() {
                       value={itemDescription}
                       onChange={(e) => setItemDescription(e.target.value)}
                       className="pin-field"
-                      disabled={lineMode === "detailed"}
+                      disabled={lineMode === "detailed" || lineMode === "timesheet"}
                       placeholder={t("invoice.itemDescriptionDefault")}
                     />
                     {lineMode === "detailed" ? (
                       <span className="text-xs text-pin-soft">{t("invoice.lineModeDetailedHint")}</span>
+                    ) : null}
+                    {lineMode === "timesheet" ? (
+                      <span className="text-xs text-pin-soft">{t("invoice.lineModeTimesheetHint")}</span>
                     ) : null}
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">

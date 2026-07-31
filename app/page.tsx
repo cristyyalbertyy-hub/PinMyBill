@@ -10,8 +10,14 @@ import { signOut, useSession } from "next-auth/react";
 
 const shortcuts = [
   {
+    href: "/new",
+    emoji: "✨",
+    labelKey: "home.shortcutNew",
+    delayClass: "pin-dash-animate-d0",
+  },
+  {
     href: "/despesas",
-    emoji: "📷",
+    emoji: "➕",
     labelKey: "home.shortcutReceipt",
     delayClass: "pin-dash-animate-d1",
   },
@@ -32,6 +38,12 @@ const shortcuts = [
     emoji: "🧾",
     labelKey: "home.shortcutBill",
     delayClass: "pin-dash-animate-d4",
+  },
+  {
+    href: "/timesheet",
+    emoji: "📅",
+    labelKey: "home.shortcutTimesheet",
+    delayClass: "pin-dash-animate-d5",
   },
 ] as const;
 
@@ -96,34 +108,12 @@ export default function Home() {
           </div>
 
           <div className="pin-dash-animate pin-dash-animate-d2 flex justify-center md:justify-end">
-            <div className="relative">
-              <DashboardIllustration />
-              <Link
-                href="/despesas?quickPhoto=1"
-                className="pin-quick-photo-pulse absolute right-2 top-3 inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-400 text-neutral-900 shadow-lg shadow-amber-500/35 ring-2 ring-white/80 transition hover:scale-105 hover:bg-amber-300 active:scale-95 motion-reduce:animate-none dark:ring-stone-900"
-                aria-label={t("home.quickPhotoAria")}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-7 w-7"
-                  aria-hidden
-                >
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-                  <circle cx="12" cy="13" r="3" />
-                </svg>
-              </Link>
-            </div>
+            <DashboardIllustration />
           </div>
         </header>
 
         <section
-          className="pin-dash-animate pin-dash-animate-d3 mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-xl sm:grid-cols-4 md:mt-10 lg:max-w-none"
+          className="pin-dash-animate pin-dash-animate-d3 mt-8 grid grid-cols-2 gap-3 sm:mx-auto sm:max-w-2xl sm:grid-cols-3 md:mt-10 lg:max-w-none lg:grid-cols-6"
           aria-label={t("home.shortcutsAria")}
         >
           {shortcuts.map((s) => (
