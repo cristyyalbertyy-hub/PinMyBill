@@ -23,7 +23,17 @@ type BillerProfile = {
 };
 
 type PeriodMode = "all" | "range";
-type LineMode = "simple" | "detailed" | "timesheet";
+type LineMode = "simple" | "detailed";
+
+type CustomInvoiceLine = {
+  id: string;
+  description: string;
+  amount: string;
+};
+
+function newCustomLine(): CustomInvoiceLine {
+  return { id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, description: "", amount: "" };
+}
 
 const EMPTY_BANK: InvoiceBankDetails = {
   accountName: "",
@@ -108,7 +118,8 @@ function FaturarPageContent() {
   const [terms, setTerms] = useState("Due on Receipt");
   const [projectName, setProjectName] = useState("");
   const [lineMode, setLineMode] = useState<LineMode>("simple");
-  const [itemDescription, setItemDescription] = useState("expenses");
+  const [expenseLineLabel, setExpenseLineLabel] = useState("expenses");
+  const [customLines, setCustomLines] = useState<CustomInvoiceLine[]>([]);
 
   const [toName, setToName] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -121,7 +132,6 @@ function FaturarPageContent() {
   const [fromPhone, setFromPhone] = useState("");
 
   const [currency, setCurrency] = useState("");
-  const [amount, setAmount] = useState("");
   const [taxPercent, setTaxPercent] = useState("0");
   const [totalAmount, setTotalAmount] = useState("");
   const [totalManual, setTotalManual] = useState(false);
@@ -151,41 +161,73 @@ function FaturarPageContent() {
     return Array.from(map.entries()).map(([cur, total]) => ({ currency: cur, total }));
   }, [clientExpenses]);
 
-  const computedTotal = useMemo(() => {
-    return computeTotalAmount(parseAmount(amount), parseAmount(taxPercent));
-  }, [amount, taxPercent]);
+  const expenseTotal = useMemo(() => {
+    const cur = currency.trim().toUpperCase();
+    const filtered = cur
+      ? clientExpenses.filter((item) => item.currency.toUpperCase() === cur)
+      : clientExpenses;
+    return filtered.reduce((sum, item) => sum + item.amount, 0);
+  }, [clientExpenses, currency]);
 
   const lineItems = useMemo(() => {
-    const total = parseAmount(amount);
-    const simpleLabel = itemDescription.trim() || t("invoice.itemDescriptionDefault");
+    const cur = currency.trim().toUpperCase();
+    const filtered = cur
+      ? clientExpenses.filter((item) => item.currency.toUpperCase() === cur)
+      : clientExpenses;
+    const items: Array<{ description: string; duration: number; rate: number; amount: number }> = [];
 
-    if (lineMode === "timesheet" && timesheetImport) {
-      return timesheetImport.lineItems;
+    if (lineMode === "detailed" && filtered.length > 0) {
+      for (const item of filtered) {
+        items.push({
+          description: item.merchant || item.category,
+          duration: 1,
+          rate: item.amount,
+          amount: item.amount,
+        });
+      }
+    } else if (expenseTotal > 0) {
+      items.push({
+        description: expenseLineLabel.trim() || t("invoice.expensesLine"),
+        duration: 1,
+        rate: expenseTotal,
+        amount: expenseTotal,
+      });
     }
 
-    if (lineMode === "detailed" && clientExpenses.length > 0) {
-      const cur = currency.trim().toUpperCase();
-      const filtered = cur
-        ? clientExpenses.filter((item) => item.currency.toUpperCase() === cur)
-        : clientExpenses;
-      return filtered.map((item) => ({
-        description: item.merchant || item.category,
-        duration: 1,
-        rate: item.amount,
-        amount: item.amount,
-      }));
+    if (timesheetImport) {
+      for (const line of timesheetImport.lineItems) {
+        items.push(line);
+      }
     }
 
-    if (total <= 0) return [];
-    return [
-      {
-        description: simpleLabel,
-        duration: 1,
-        rate: total,
-        amount: total,
-      },
-    ];
-  }, [amount, clientExpenses, currency, itemDescription, lineMode, t, timesheetImport]);
+    for (const row of customLines) {
+      const amt = parseAmount(row.amount);
+      const desc = row.description.trim();
+      if (amt > 0 && desc) {
+        items.push({ description: desc, duration: 1, rate: amt, amount: amt });
+      }
+    }
+
+    return items;
+  }, [
+    currency,
+    customLines,
+    clientExpenses,
+    expenseLineLabel,
+    expenseTotal,
+    lineMode,
+    t,
+    timesheetImport,
+  ]);
+
+  const subtotal = useMemo(
+    () => lineItems.reduce((sum, item) => sum + item.amount, 0),
+    [lineItems],
+  );
+
+  const computedTotal = useMemo(() => {
+    return computeTotalAmount(subtotal, parseAmount(taxPercent));
+  }, [subtotal, taxPercent]);
 
   const invoiceLabels = useMemo<InvoiceLabels>(
     () => ({
@@ -236,7 +278,7 @@ function FaturarPageContent() {
       fromEmail: fromEmail.trim(),
       fromPhone: fromPhone.trim(),
       currency: currency.trim().toUpperCase(),
-      amount: parseAmount(amount),
+      amount: subtotal,
       taxPercent: parseAmount(taxPercent),
       totalAmount: totalManual ? parseAmount(totalAmount) : computedTotal,
       notes,
@@ -244,7 +286,7 @@ function FaturarPageContent() {
       bank,
     }),
     [
-      amount,
+      subtotal,
       bank,
       billDate,
       billNumber,
@@ -283,7 +325,6 @@ function FaturarPageContent() {
   const applyDefaultsFromClient = useCallback((client: string, expenses: ExpenseItem[]) => {
     applyClientDetails(client);
     if (expenses.length === 0) {
-      setAmount("");
       setCurrency("");
       setTotalAmount("");
       setTotalManual(false);
@@ -297,7 +338,6 @@ function FaturarPageContent() {
     const primary = totals[0];
     if (primary) {
       setCurrency(primary.currency);
-      setAmount(primary.total.toFixed(3));
       setTotalManual(false);
       if (!bank.currency) {
         setBank((prev) => ({ ...prev, currency: primary.currency }));
@@ -379,10 +419,8 @@ function FaturarPageContent() {
           if (raw) {
             const payload = JSON.parse(raw) as TimesheetImportPayload;
             setTimesheetImport(payload);
-            setLineMode("timesheet");
             setClientName(payload.clientName);
             setCurrency(payload.currency);
-            setAmount(payload.total.toFixed(3));
             setTotalManual(false);
             sessionStorage.removeItem(TIMESHEET_IMPORT_KEY);
           }
@@ -441,7 +479,7 @@ function FaturarPageContent() {
       globalThis.alert(t("invoice.toRequired"));
       return;
     }
-    if (parseAmount(amount) <= 0) {
+    if (subtotal <= 0) {
       globalThis.alert(t("invoice.amountRequired"));
       return;
     }
@@ -551,17 +589,20 @@ function FaturarPageContent() {
                     >
                       <option value="simple">{t("invoice.lineModeSimple")}</option>
                       <option value="detailed">{t("invoice.lineModeDetailed")}</option>
-                      <option value="timesheet" disabled={!timesheetImport}>
-                        {t("invoice.lineModeTimesheet")}
-                      </option>
                     </select>
-                    {lineMode === "timesheet" ? (
-                      <span className="text-xs text-pin-soft">{t("invoice.lineModeTimesheetHint")}</span>
-                    ) : null}
                     {lineMode === "detailed" ? (
                       <span className="text-xs text-pin-soft">{t("invoice.lineModeDetailedHint")}</span>
                     ) : null}
                   </label>
+                  {timesheetImport ? (
+                    <p className="rounded-xl bg-pin-teal-soft/50 px-3 py-2 text-xs text-pin-muted dark:bg-teal-950/30">
+                      {t("invoice.timesheetIncluded", {
+                        hours: String(timesheetImport.lineItems[0]?.duration ?? 0),
+                        amount: timesheetImport.total.toFixed(2),
+                        currency: timesheetImport.currency,
+                      })}
+                    </p>
+                  ) : null}
                 </div>
               </section>
 
@@ -689,24 +730,91 @@ function FaturarPageContent() {
                   </label>
 
                   <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+                    {t("invoice.linesHeading")}
+                  </p>
+
+                  {lineMode === "simple" && expenseTotal > 0 ? (
+                    <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                      {t("invoice.expensesLine")}
+                      <div className="flex gap-2">
+                        <input
+                          value={expenseLineLabel}
+                          onChange={(e) => setExpenseLineLabel(e.target.value)}
+                          className="pin-field min-w-0 flex-1"
+                          placeholder={t("invoice.itemDescriptionDefault")}
+                        />
+                        <input
+                          readOnly
+                          value={expenseTotal.toFixed(3)}
+                          className="pin-field w-28 bg-stone-100 text-right dark:bg-stone-800"
+                        />
+                      </div>
+                    </label>
+                  ) : null}
+
+                  {timesheetImport ? (
+                    <div className="sm:col-span-2 rounded-xl bg-pin-teal-soft/40 px-3 py-2 text-sm dark:bg-teal-950/30">
+                      <p className="font-medium text-pin-ink">{t("invoice.timesheetLine")}</p>
+                      <p className="text-pin-muted">
+                        {timesheetImport.lineItems[0]?.description ?? t("invoice.timesheetLine")} —{" "}
+                        {timesheetImport.total.toFixed(2)} {timesheetImport.currency}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {customLines.map((row) => (
+                    <div key={row.id} className="flex gap-2 sm:col-span-2">
+                      <input
+                        value={row.description}
+                        onChange={(e) =>
+                          setCustomLines((prev) =>
+                            prev.map((r) =>
+                              r.id === row.id ? { ...r, description: e.target.value } : r,
+                            ),
+                          )
+                        }
+                        className="pin-field min-w-0 flex-1"
+                        placeholder={t("invoice.customLineDescription")}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={row.amount}
+                        onChange={(e) =>
+                          setCustomLines((prev) =>
+                            prev.map((r) => (r.id === row.id ? { ...r, amount: e.target.value } : r)),
+                          )
+                        }
+                        className="pin-field w-28"
+                        placeholder="0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCustomLines((prev) => prev.filter((r) => r.id !== row.id))}
+                        className="rounded-xl px-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        aria-label={t("common.remove")}
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={() => setCustomLines((prev) => [...prev, newCustomLine()])}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-pin-teal-soft text-xl font-bold text-pin-accent ring-1 ring-teal-200 transition hover:bg-teal-100 active:scale-95 dark:bg-teal-950/50 dark:ring-teal-800"
+                      aria-label={t("invoice.addCustomLine")}
+                      title={t("invoice.addCustomLine")}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
                     {t("invoice.amountsHeading")}
                   </p>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                    {t("invoice.itemAndDescription")}
-                    <input
-                      value={itemDescription}
-                      onChange={(e) => setItemDescription(e.target.value)}
-                      className="pin-field"
-                      disabled={lineMode === "detailed" || lineMode === "timesheet"}
-                      placeholder={t("invoice.itemDescriptionDefault")}
-                    />
-                    {lineMode === "detailed" ? (
-                      <span className="text-xs text-pin-soft">{t("invoice.lineModeDetailedHint")}</span>
-                    ) : null}
-                    {lineMode === "timesheet" ? (
-                      <span className="text-xs text-pin-soft">{t("invoice.lineModeTimesheetHint")}</span>
-                    ) : null}
-                  </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
                     {t("common.currency")}
                     <input
@@ -717,17 +825,11 @@ function FaturarPageContent() {
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                    {t("invoice.amount")}
+                    {t("invoice.subtotal")}
                     <input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      value={amount}
-                      onChange={(e) => {
-                        setAmount(e.target.value);
-                        setTotalManual(false);
-                      }}
-                      className="pin-field"
+                      readOnly
+                      value={subtotal.toFixed(3)}
+                      className="pin-field bg-stone-100 font-semibold dark:bg-stone-800"
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
