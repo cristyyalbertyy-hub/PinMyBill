@@ -7,6 +7,7 @@ import { TopNav } from "@/components/top-nav";
 import { emptyBank, EMPTY_BANK, sanitizeExtraBanks } from "@/lib/bank-utils";
 import { useT } from "@/lib/i18n/context";
 import { mergeProjectDefaults } from "@/lib/project-defaults";
+import { projectDisplayName } from "@/lib/project-label";
 import { useProject } from "@/lib/project-context";
 import type { ClientDetail, UserProfileData } from "@/lib/profile-types";
 import type { InvoiceBankDetails } from "@/lib/invoice-types";
@@ -20,6 +21,7 @@ function applyClientToForm(client: ClientDetail, profile: UserProfileData | null
   const defaults = mergeProjectDefaults(client, profile);
   return {
     clientName: client.name,
+    projectName: client.projectName || client.name,
     startDate: client.startDate ?? todayIso(),
     projectDirector: client.projectDirector ?? defaults.projectDirector,
     clientAddress: client.address ?? "",
@@ -45,6 +47,7 @@ export default function NewProjectPage() {
   const [initialized, setInitialized] = useState(false);
 
   const [clientName, setClientName] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [startDate, setStartDate] = useState(todayIso());
   const [projectDirector, setProjectDirector] = useState("");
   const [clientAddress, setClientAddress] = useState("");
@@ -59,7 +62,7 @@ export default function NewProjectPage() {
   const [extraBanks, setExtraBanks] = useState<InvoiceBankDetails[]>([]);
 
   const hasDefaults = Boolean(
-    fromName || bank.iban || bank.accountName || clientName || extraBanks.length > 0,
+    fromName || bank.iban || bank.accountName || clientName || projectName || extraBanks.length > 0,
   );
 
   const fillFromClient = useCallback(
@@ -78,6 +81,7 @@ export default function NewProjectPage() {
       }
       const form = applyClientToForm(client, profile);
       setClientName(form.clientName);
+      setProjectName(form.projectName);
       setStartDate(form.startDate);
       setProjectDirector(form.projectDirector);
       setClientAddress(form.clientAddress);
@@ -112,6 +116,7 @@ export default function NewProjectPage() {
     if (!id) {
       fillFromClient(null, "");
       setClientName("");
+      setProjectName("");
       setStartDate(todayIso());
       setClientAddress("");
       setClientEmail("");
@@ -132,13 +137,14 @@ export default function NewProjectPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientName.trim()) return;
+    if (!clientName.trim() || !projectName.trim()) return;
     setSaving(true);
     setError(null);
     try {
       const savedExtras = sanitizeExtraBanks(extraBanks);
       const clientPayload = {
         name: clientName.trim(),
+        projectName: projectName.trim(),
         startDate,
         projectDirector: projectDirector.trim() || fromName.trim(),
         address: clientAddress.trim() || null,
@@ -247,11 +253,11 @@ export default function NewProjectPage() {
             ) : null}
 
             <section className="pin-card p-4 md:p-6">
-              <h2 className="text-lg font-bold text-pin-ink">{t("new.clientSection")}</h2>
+              <h2 className="text-lg font-bold text-pin-ink">{t("new.projectSection")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {projects.length > 0 ? (
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                    {t("common.client")}
+                    {t("project.loadExisting")}
                     <select
                       value={selectedClientId}
                       onChange={(e) => loadClient(e.target.value)}
@@ -260,12 +266,27 @@ export default function NewProjectPage() {
                       <option value="">{t("common.newClient")}</option>
                       {projects.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.name}
+                          {projectDisplayName(c)}
                         </option>
                       ))}
                     </select>
                   </label>
                 ) : null}
+                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                  {t("new.projectName")}
+                  <input
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    className="pin-field"
+                    required
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="pin-card p-4 md:p-6">
+              <h2 className="text-lg font-bold text-pin-ink">{t("new.clientSection")}</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
                   {t("new.clientName")}
                   <input

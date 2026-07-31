@@ -62,6 +62,7 @@ model Client {
   userId          String?
   user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String
+  projectName     String        @default("")
   startDate       DateTime?     @db.Date
   projectDirector String?
   address         String?

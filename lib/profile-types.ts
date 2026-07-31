@@ -14,6 +14,7 @@ export type UserProfileData = {
 export type ClientDetail = {
   id: string;
   name: string;
+  projectName: string;
   startDate: string | null;
   projectDirector: string | null;
   address: string | null;

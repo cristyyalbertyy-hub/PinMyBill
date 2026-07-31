@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/context";
 import { useProjectOptional } from "@/lib/project-context";
+import { projectDisplayName } from "@/lib/project-label";
 import { isAuthPublicPath } from "@/lib/auth-public-paths";
 
 export function ProjectSwitcher() {
@@ -39,7 +40,7 @@ export function ProjectSwitcher() {
   }
 
   const { ready, projects, activeProject, setActiveProject } = projectCtx;
-  const label = activeProject?.name ?? t("project.noProject");
+  const label = activeProject ? projectDisplayName(activeProject) : t("project.noProject");
 
   return (
     <div ref={panelRef} className="pointer-events-auto relative">
@@ -84,7 +85,7 @@ export function ProjectSwitcher() {
                   }`}
                 >
                   <span aria-hidden>{selected ? "✓" : " "}</span>
-                  <span className="truncate">{project.name}</span>
+                  <span className="truncate">{projectDisplayName(project)}</span>
                 </button>
               );
             })

@@ -13,6 +13,7 @@ import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
 import { mergeProjectDefaults } from "@/lib/project-defaults";
 import { useProject } from "@/lib/project-context";
 import { bankAccountLabel, listBankAccounts } from "@/lib/bank-utils";
+import { invoiceProjectName } from "@/lib/project-label";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BILLER_PROFILE_KEY = "pinmybill-biller-profile";
@@ -325,7 +326,7 @@ function FaturarPageContent() {
         setToEmail(detail.email ?? "");
         setToPhone(detail.phone ?? "");
         if (detail.startDate) setStartDate(detail.startDate);
-        if (detail.projectDirector) setProjectName(detail.projectDirector);
+        setProjectName(invoiceProjectName(detail));
 
         const defaults = mergeProjectDefaults(detail, profile);
         const accounts = listBankAccounts(defaults.bank, defaults.extraBanks);

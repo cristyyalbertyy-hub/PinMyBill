@@ -5,6 +5,7 @@ import type { InvoiceBankDetails } from "@/lib/invoice-types";
 type ClientRow = {
   id: string;
   name: string;
+  projectName: string;
   startDate: Date | null;
   projectDirector: string | null;
   address: string | null;
@@ -27,6 +28,7 @@ export function formatClient(row: ClientRow): ClientDetail {
   return {
     id: row.id,
     name: row.name,
+    projectName: row.projectName,
     startDate: row.startDate ? row.startDate.toISOString().slice(0, 10) : null,
     projectDirector: row.projectDirector,
     address: row.address,
@@ -50,6 +52,7 @@ export function formatClient(row: ClientRow): ClientDetail {
 
 export type ClientWritePayload = {
   name?: string;
+  projectName?: string;
   startDate?: string | null;
   projectDirector?: string | null;
   address?: string | null;
@@ -66,6 +69,7 @@ export type ClientWritePayload = {
 export function clientWriteData(body: ClientWritePayload): Record<string, unknown> {
   const data: Record<string, unknown> = {};
   if (body.name !== undefined) data.name = body.name.trim();
+  if (body.projectName !== undefined) data.projectName = body.projectName.trim();
   if (body.startDate !== undefined) {
     data.startDate = body.startDate ? new Date(body.startDate) : null;
   }
