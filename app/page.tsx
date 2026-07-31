@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DashboardIllustration } from "@/components/dashboard-illustration";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { LegacyDataBanner } from "@/components/legacy-data-banner";
 import { useT } from "@/lib/i18n/context";
-import { signOut, useSession } from "next-auth/react";
 
 const shortcuts = [
   {
@@ -54,7 +52,6 @@ type BeforeInstallPromptEvent = Event & {
 
 export default function Home() {
   const t = useT();
-  const { data: session } = useSession();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
@@ -74,20 +71,8 @@ export default function Home() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page px-4 pb-8 md:p-10">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-3 flex items-center justify-end gap-2 md:mb-4">
-          {session ? (
-            <button
-              type="button"
-              onClick={() => void signOut({ callbackUrl: "/login" })}
-              className="min-h-9 rounded-full px-3 py-1.5 text-xs font-semibold text-pin-muted ring-1 ring-stone-200/90 transition hover:bg-pin-teal-soft hover:text-pin-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/40 focus-visible:ring-offset-2 dark:ring-stone-600 dark:hover:bg-stone-800"
-            >
-              {t("auth.signOut")}
-            </button>
-          ) : null}
-          <LanguageSwitcher variant="inline" />
-        </div>
         <header className="grid items-center gap-8 md:grid-cols-[1fr_min(42%,18rem)] md:gap-10">
           <div className="pin-dash-animate min-w-0">
             <p className="pin-dash-animate pin-dash-animate-d1 mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200/60 bg-pin-teal-soft/90 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-pin-accent shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-teal-800/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:shadow-teal-900/40">

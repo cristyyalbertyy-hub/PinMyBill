@@ -211,6 +211,7 @@ html.dark body.pin-app {
 
 .pin-page {
   min-height: 100vh;
+  padding-top: max(3rem, calc(env(safe-area-inset-top) + 2.75rem));
 }
 
 .pin-card {

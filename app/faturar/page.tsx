@@ -306,27 +306,52 @@ function FaturarPageContent() {
   }, [applyClientDetails, bank.currency]);
 
   useEffect(() => {
-    void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
-      .then(async ([ex, cl]) => {
-        if (!ex.ok || !cl.ok) throw new Error("fetch");
-        const expenses = (await ex.json()) as ExpenseItem[];
-        const clRows = (await cl.json()) as ClientDetail[];
-        setExpenseItems(Array.isArray(expenses) ? expenses : []);
-        setClientDetails(clRows);
-        const names = clRows.map((r) => r.name);
-        setClients(names);
+    let cancelled = false;
 
-        let profileLoaded = false;
-        try {
-          const prRes = await fetch("/api/account/profile");
-          if (prRes.ok) {
-            const profile = (await prRes.json()) as {
-              fromName: string;
-              fromAddress: string;
-              fromEmail: string;
-              fromPhone: string;
-              bank: InvoiceBankDetails;
-            };
+    async function loadData() {
+      try {
+        const ex = await fetch("/api/expenses");
+        if (ex.ok) {
+          const expenses = (await ex.json()) as ExpenseItem[];
+          if (!cancelled) setExpenseItems(Array.isArray(expenses) ? expenses : []);
+        } else if (!cancelled) {
+          setLoadError(t("invoice.loadError"));
+        }
+      } catch {
+        if (!cancelled) setLoadError(t("invoice.loadError"));
+      }
+
+      try {
+        const cl = await fetch("/api/clients");
+        if (cl.ok) {
+          const clRows = (await cl.json()) as ClientDetail[];
+          if (!cancelled) {
+            setClientDetails(clRows);
+            const names = clRows.map((r) => r.name);
+            setClients(names);
+
+            const paramClient = searchParams.get("client");
+            const initial =
+              paramClient && names.includes(paramClient) ? paramClient : names[0] ?? "";
+            if (initial) setClientName(initial);
+          }
+        }
+      } catch {
+        /* clients optional for invoice if manually entered */
+      }
+
+      let profileLoaded = false;
+      try {
+        const prRes = await fetch("/api/account/profile");
+        if (prRes.ok) {
+          const profile = (await prRes.json()) as {
+            fromName: string;
+            fromAddress: string;
+            fromEmail: string;
+            fromPhone: string;
+            bank: InvoiceBankDetails;
+          };
+          if (!cancelled) {
             setFromName(profile.fromName);
             setFromAddress(profile.fromAddress);
             setFromEmail(profile.fromEmail);
@@ -334,46 +359,46 @@ function FaturarPageContent() {
             setBank({ ...EMPTY_BANK, ...profile.bank });
             profileLoaded = true;
           }
-        } catch {
-          // fallback localStorage abaixo
         }
+      } catch {
+        /* profile optional */
+      }
 
-        if (!profileLoaded) {
-          const profile = loadBillerProfile();
-          setFromName(profile.fromName);
-          setFromAddress(profile.fromAddress);
-          setFromEmail(profile.fromEmail);
-          setFromPhone(profile.fromPhone);
-          setBank(loadBankProfile());
-        }
+      if (!cancelled && !profileLoaded) {
+        const profile = loadBillerProfile();
+        setFromName(profile.fromName);
+        setFromAddress(profile.fromAddress);
+        setFromEmail(profile.fromEmail);
+        setFromPhone(profile.fromPhone);
+        setBank(loadBankProfile());
+      }
 
-        const paramClient = searchParams.get("client");
-        const initial =
-          paramClient && names.includes(paramClient) ? paramClient : names[0] ?? "";
-        if (initial) setClientName(initial);
-
-        if (searchParams.get("fromTimesheet") === "1") {
-          try {
-            const raw = sessionStorage.getItem(TIMESHEET_IMPORT_KEY);
-            if (raw) {
-              const payload = JSON.parse(raw) as TimesheetImportPayload;
-              setTimesheetImport(payload);
-              setLineMode("timesheet");
-              setClientName(payload.clientName);
-              setCurrency(payload.currency);
-              setAmount(payload.total.toFixed(3));
-              setTotalManual(false);
-              sessionStorage.removeItem(TIMESHEET_IMPORT_KEY);
-            }
-          } catch {
-            // ignore
+      if (!cancelled && searchParams.get("fromTimesheet") === "1") {
+        try {
+          const raw = sessionStorage.getItem(TIMESHEET_IMPORT_KEY);
+          if (raw) {
+            const payload = JSON.parse(raw) as TimesheetImportPayload;
+            setTimesheetImport(payload);
+            setLineMode("timesheet");
+            setClientName(payload.clientName);
+            setCurrency(payload.currency);
+            setAmount(payload.total.toFixed(3));
+            setTotalManual(false);
+            sessionStorage.removeItem(TIMESHEET_IMPORT_KEY);
           }
+        } catch {
+          // ignore
         }
+      }
+    }
 
-        setLoadError(null);
-      })
-      .catch(() => setLoadError(t("invoice.loadError")))
-      .finally(() => setReady(true));
+    void loadData().finally(() => {
+      if (!cancelled) setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, t]);
 
   useEffect(() => {

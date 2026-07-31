@@ -101,18 +101,43 @@ export default function ExportarPage() {
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   useEffect(() => {
-    void Promise.all([fetch("/api/expenses"), fetch("/api/clients")])
-      .then(async ([ex, cl]) => {
-        if (!ex.ok || !cl.ok) throw new Error(t("export.fetchDataFail"));
-        const expenses = (await ex.json()) as ExpenseItem[];
-        const clRows = (await cl.json()) as { name: string }[];
-        if (Array.isArray(expenses)) setExpenseItems(expenses);
-        const names = clRows.map((r) => r.name);
-        setClients(names);
-        if (names[0]) setClientName((prev) => prev || names[0]);
-        setLoadError(null);
-      })
-      .catch(async () => {
+    let cancelled = false;
+
+    async function loadData() {
+      let expensesOk = false;
+      let clientsOk = false;
+
+      try {
+        const ex = await fetch("/api/expenses");
+        if (ex.ok) {
+          const expenses = (await ex.json()) as ExpenseItem[];
+          if (!cancelled && Array.isArray(expenses)) {
+            setExpenseItems(expenses);
+            expensesOk = true;
+          }
+        }
+      } catch {
+        /* expenses failed */
+      }
+
+      try {
+        const cl = await fetch("/api/clients");
+        if (cl.ok) {
+          const clRows = (await cl.json()) as { name: string }[];
+          if (!cancelled) {
+            const names = clRows.map((r) => r.name);
+            setClients(names);
+            if (names[0]) setClientName((prev) => prev || names[0]);
+            clientsOk = true;
+          }
+        }
+      } catch {
+        /* clients failed */
+      }
+
+      if (cancelled) return;
+
+      if (!expensesOk) {
         setLoadError(t("export.loadError"));
         try {
           const healthRes = await fetch("/api/health/db");
@@ -121,7 +146,24 @@ export default function ExportarPage() {
         } catch {
           setDbHealth(null);
         }
-      });
+      } else {
+        setLoadError(clientsOk ? null : t("export.clientsPartialError"));
+        if (!clientsOk) {
+          try {
+            const healthRes = await fetch("/api/health/db");
+            const health = (await healthRes.json()) as DbHealth;
+            setDbHealth(health);
+          } catch {
+            setDbHealth(null);
+          }
+        }
+      }
+    }
+
+    void loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [t]);
 
   useEffect(() => {
@@ -410,6 +452,7 @@ export default function ExportarPage() {
         {loadError ? (
           <p className="mt-4 rounded-xl bg-pin-warm-soft px-4 py-3 text-sm font-medium text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/30 dark:text-amber-100 dark:ring-amber-800">
             {loadError}
+            {dbHealth?.db?.provider === "neon" && !dbHealth.ok ? t("error.schemaHint") : ""}
             {dbHealth?.db?.provider === "local" ? t("hist.dbLocal") : ""}
             {dbHealth?.db?.provider === "missing" ? t("hist.dbMissing") : ""}
           </p>
