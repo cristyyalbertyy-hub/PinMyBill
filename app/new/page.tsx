@@ -2,29 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { BankAccountFields } from "@/components/bank-account-fields";
 import { TopNav } from "@/components/top-nav";
+import { emptyBank, EMPTY_BANK, sanitizeExtraBanks } from "@/lib/bank-utils";
 import { useT } from "@/lib/i18n/context";
 import { mergeProjectDefaults } from "@/lib/project-defaults";
 import { useProject } from "@/lib/project-context";
-import type { ClientDetail } from "@/lib/profile-types";
+import type { ClientDetail, UserProfileData } from "@/lib/profile-types";
 import type { InvoiceBankDetails } from "@/lib/invoice-types";
-
-const EMPTY_BANK: InvoiceBankDetails = {
-  accountName: "",
-  bankName: "",
-  accountNo: "",
-  iban: "",
-  swift: "",
-  currency: "",
-};
 
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function applyClientToForm(client: ClientDetail) {
-  const defaults = mergeProjectDefaults(client, null);
+function applyClientToForm(client: ClientDetail, profile: UserProfileData | null) {
+  const defaults = mergeProjectDefaults(client, profile);
   return {
     clientName: client.name,
     startDate: client.startDate ?? todayIso(),
@@ -37,6 +30,7 @@ function applyClientToForm(client: ClientDetail) {
     fromEmail: defaults.fromEmail,
     fromPhone: defaults.fromPhone,
     bank: { ...EMPTY_BANK, ...defaults.bank },
+    extraBanks: defaults.extraBanks.map((item) => ({ ...EMPTY_BANK, ...item })),
   };
 }
 
@@ -62,8 +56,11 @@ export default function NewProjectPage() {
   const [fromEmail, setFromEmail] = useState("");
   const [fromPhone, setFromPhone] = useState("");
   const [bank, setBank] = useState<InvoiceBankDetails>({ ...EMPTY_BANK });
+  const [extraBanks, setExtraBanks] = useState<InvoiceBankDetails[]>([]);
 
-  const hasDefaults = Boolean(fromName || bank.iban || bank.accountName || clientName);
+  const hasDefaults = Boolean(
+    fromName || bank.iban || bank.accountName || clientName || extraBanks.length > 0,
+  );
 
   const fillFromClient = useCallback(
     (client: ClientDetail | null, clientId: string) => {
@@ -76,9 +73,10 @@ export default function NewProjectPage() {
         setFromPhone(defaults.fromPhone);
         setProjectDirector(defaults.projectDirector);
         setBank({ ...EMPTY_BANK, ...defaults.bank });
+        setExtraBanks(defaults.extraBanks.map((item) => ({ ...EMPTY_BANK, ...item })));
         return;
       }
-      const form = applyClientToForm(client);
+      const form = applyClientToForm(client, profile);
       setClientName(form.clientName);
       setStartDate(form.startDate);
       setProjectDirector(form.projectDirector);
@@ -90,6 +88,7 @@ export default function NewProjectPage() {
       setFromEmail(form.fromEmail);
       setFromPhone(form.fromPhone);
       setBank(form.bank);
+      setExtraBanks(form.extraBanks);
     },
     [profile],
   );
@@ -123,8 +122,12 @@ export default function NewProjectPage() {
     if (client) fillFromClient(client, id);
   }
 
-  function updateBank(field: keyof InvoiceBankDetails, value: string) {
-    setBank((prev) => ({ ...prev, [field]: value }));
+  function updateExtraBank(index: number, value: InvoiceBankDetails) {
+    setExtraBanks((prev) => prev.map((item, i) => (i === index ? value : item)));
+  }
+
+  function removeExtraBank(index: number) {
+    setExtraBanks((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -133,6 +136,7 @@ export default function NewProjectPage() {
     setSaving(true);
     setError(null);
     try {
+      const savedExtras = sanitizeExtraBanks(extraBanks);
       const clientPayload = {
         name: clientName.trim(),
         startDate,
@@ -145,6 +149,7 @@ export default function NewProjectPage() {
         fromEmail,
         fromPhone,
         bank,
+        extraBanks: savedExtras,
       };
 
       await fetch("/api/account/profile", {
@@ -157,6 +162,7 @@ export default function NewProjectPage() {
           fromPhone,
           projectDirector,
           bank,
+          extraBanks: savedExtras,
         }),
       });
 
@@ -361,56 +367,29 @@ export default function NewProjectPage() {
 
             <section className="pin-card p-4 md:p-6">
               <h2 className="text-lg font-bold text-pin-ink">{t("new.bankSection")}</h2>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                  {t("invoice.bankAccountName")}
-                  <input
-                    value={bank.accountName}
-                    onChange={(e) => updateBank("accountName", e.target.value)}
-                    className="pin-field"
+              <div className="mt-3 grid gap-3">
+                <BankAccountFields
+                  bank={bank}
+                  onChange={setBank}
+                  title={t("new.bankPrimary")}
+                />
+                {extraBanks.map((extra, index) => (
+                  <BankAccountFields
+                    key={`extra-bank-${index}`}
+                    bank={extra}
+                    onChange={(value) => updateExtraBank(index, value)}
+                    title={t("new.bankAlternative", { n: String(index + 2) })}
+                    onRemove={() => removeExtraBank(index)}
                   />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("invoice.bankName")}
-                  <input
-                    value={bank.bankName}
-                    onChange={(e) => updateBank("bankName", e.target.value)}
-                    className="pin-field"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("invoice.bankAccountNo")}
-                  <input
-                    value={bank.accountNo}
-                    onChange={(e) => updateBank("accountNo", e.target.value)}
-                    className="pin-field"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                  {t("invoice.bankIban")}
-                  <input
-                    value={bank.iban}
-                    onChange={(e) => updateBank("iban", e.target.value)}
-                    className="pin-field"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("invoice.bankSwift")}
-                  <input
-                    value={bank.swift}
-                    onChange={(e) => updateBank("swift", e.target.value)}
-                    className="pin-field"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
-                  {t("invoice.bankCurrency")}
-                  <input
-                    value={bank.currency}
-                    onChange={(e) => updateBank("currency", e.target.value.toUpperCase())}
-                    className="pin-field"
-                    maxLength={12}
-                  />
-                </label>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setExtraBanks((prev) => [...prev, emptyBank()])}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-pin-ink ring-1 ring-stone-200 transition hover:bg-pin-teal-soft dark:bg-stone-900 dark:ring-stone-700"
+                >
+                  <span aria-hidden>＋</span>
+                  {t("new.addBankAccount")}
+                </button>
               </div>
             </section>
 

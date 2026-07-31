@@ -12,6 +12,7 @@ import type { ClientDetail, TimesheetImportPayload } from "@/lib/profile-types";
 import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
 import { mergeProjectDefaults } from "@/lib/project-defaults";
 import { useProject } from "@/lib/project-context";
+import { bankAccountLabel, listBankAccounts } from "@/lib/bank-utils";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BILLER_PROFILE_KEY = "pinmybill-biller-profile";
@@ -143,6 +144,8 @@ function FaturarPageContent() {
   );
 
   const [bank, setBank] = useState<InvoiceBankDetails>({ ...EMPTY_BANK });
+  const [bankAccounts, setBankAccounts] = useState<InvoiceBankDetails[]>([]);
+  const [selectedBankIndex, setSelectedBankIndex] = useState(0);
 
   const clientExpenses = useMemo(() => {
     if (!clientName) return [];
@@ -325,12 +328,20 @@ function FaturarPageContent() {
         if (detail.projectDirector) setProjectName(detail.projectDirector);
 
         const defaults = mergeProjectDefaults(detail, profile);
+        const accounts = listBankAccounts(defaults.bank, defaults.extraBanks);
+        setBankAccounts(accounts);
+        setSelectedBankIndex(0);
         setFromName(defaults.fromName);
         setFromAddress(defaults.fromAddress);
         setFromEmail(defaults.fromEmail);
         setFromPhone(defaults.fromPhone);
-        setBank({ ...EMPTY_BANK, ...defaults.bank });
-        if (defaults.bank.currency) setCurrency(defaults.bank.currency);
+        if (accounts[0]) {
+          setBank({ ...EMPTY_BANK, ...accounts[0] });
+          if (accounts[0].currency) setCurrency(accounts[0].currency);
+        } else {
+          setBank({ ...EMPTY_BANK, ...defaults.bank });
+          if (defaults.bank.currency) setCurrency(defaults.bank.currency);
+        }
       }
     },
     [clientDetails, profile],
@@ -498,6 +509,12 @@ function FaturarPageContent() {
       // Ignora falhas de storage.
     }
   }, [bank, fromAddress, fromEmail, fromName, fromPhone]);
+
+  function selectBankAccount(index: number) {
+    setSelectedBankIndex(index);
+    const account = bankAccounts[index];
+    if (account) setBank({ ...EMPTY_BANK, ...account });
+  }
 
   function updateBank(field: keyof InvoiceBankDetails, value: string) {
     setBank((prev) => ({ ...prev, [field]: value }));
@@ -908,6 +925,22 @@ function FaturarPageContent() {
                   <p className="sm:col-span-2 text-xs font-bold uppercase tracking-wider text-orange-500">
                     {t("invoice.bankDetails")}
                   </p>
+                  {bankAccounts.length > 1 ? (
+                    <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
+                      {t("invoice.selectBankAccount")}
+                      <select
+                        value={selectedBankIndex}
+                        onChange={(e) => selectBankAccount(Number.parseInt(e.target.value, 10))}
+                        className="pin-field"
+                      >
+                        {bankAccounts.map((account, index) => (
+                          <option key={`bank-${index}`} value={index}>
+                            {bankAccountLabel(account, index)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
                     {t("invoice.bankAccountName")}
                     <input

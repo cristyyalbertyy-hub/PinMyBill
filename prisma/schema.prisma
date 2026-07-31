@@ -52,6 +52,7 @@ model UserProfile {
   bankIban        String  @default("")
   bankSwift       String  @default("")
   bankCurrency    String  @default("")
+  extraBanks      Json    @default("[]")
   activeClientId  String?
   activeClient    Client? @relation("ActiveProject", fields: [activeClientId], references: [id], onDelete: SetNull)
 }
@@ -76,6 +77,7 @@ model Client {
   bankIban        String        @default("")
   bankSwift       String        @default("")
   bankCurrency    String        @default("")
+  extraBanks      Json          @default("[]")
   activeForProfiles UserProfile[] @relation("ActiveProject")
 
   @@unique([userId, name])

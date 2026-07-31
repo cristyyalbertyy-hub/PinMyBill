@@ -1,18 +1,6 @@
 import type { ClientDetail, UserProfileData } from "@/lib/profile-types";
+import { EMPTY_BANK, hasBankData, parseExtraBanks } from "@/lib/bank-utils";
 import type { InvoiceBankDetails } from "@/lib/invoice-types";
-
-const EMPTY_BANK: InvoiceBankDetails = {
-  accountName: "",
-  bankName: "",
-  accountNo: "",
-  iban: "",
-  swift: "",
-  currency: "",
-};
-
-function hasBankData(bank: InvoiceBankDetails) {
-  return Boolean(bank.accountName || bank.iban || bank.bankName);
-}
 
 function hasBillerData(client: Pick<ClientDetail, "fromName" | "fromEmail">) {
   return Boolean(client.fromName || client.fromEmail);
@@ -29,8 +17,10 @@ export function mergeProjectDefaults(
   fromPhone: string;
   projectDirector: string;
   bank: InvoiceBankDetails;
+  extraBanks: InvoiceBankDetails[];
 } {
   const profileBank = profile?.bank ?? EMPTY_BANK;
+  const profileExtras = profile?.extraBanks ?? [];
   const profileBiller = {
     fromName: profile?.fromName ?? "",
     fromAddress: profile?.fromAddress ?? "",
@@ -40,8 +30,14 @@ export function mergeProjectDefaults(
   };
 
   if (!client) {
-    return { ...profileBiller, bank: { ...EMPTY_BANK, ...profileBank } };
+    return {
+      ...profileBiller,
+      bank: { ...EMPTY_BANK, ...profileBank },
+      extraBanks: profileExtras,
+    };
   }
+
+  const clientExtras = client.extraBanks?.length ? client.extraBanks : profileExtras;
 
   return {
     fromName: hasBillerData(client) ? client.fromName : profileBiller.fromName,
@@ -51,5 +47,8 @@ export function mergeProjectDefaults(
     projectDirector:
       client.projectDirector || profileBiller.projectDirector || profileBiller.fromName,
     bank: hasBankData(client.bank) ? client.bank : { ...EMPTY_BANK, ...profileBank },
+    extraBanks: clientExtras,
   };
 }
+
+export { parseExtraBanks };

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { parseExtraBanks, sanitizeExtraBanks } from "@/lib/bank-utils";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
+import type { InvoiceBankDetails } from "@/lib/invoice-types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export async function GET() {
           swift: "",
           currency: "",
         },
+        extraBanks: [],
       });
     }
     return NextResponse.json({
@@ -45,6 +48,7 @@ export async function GET() {
         swift: row.bankSwift,
         currency: row.bankCurrency,
       },
+      extraBanks: parseExtraBanks(row.extraBanks),
     });
   } catch {
     return NextResponse.json({ error: "Falha ao ler perfil." }, { status: 500 });
@@ -62,17 +66,11 @@ export async function PATCH(request: Request) {
       fromEmail?: string;
       fromPhone?: string;
       projectDirector?: string;
-      bank?: {
-        accountName?: string;
-        bankName?: string;
-        accountNo?: string;
-        iban?: string;
-        swift?: string;
-        currency?: string;
-      };
+      bank?: InvoiceBankDetails;
+      extraBanks?: InvoiceBankDetails[];
     };
 
-    const bank = body.bank ?? {};
+    const bank = body.bank ?? ({} as InvoiceBankDetails);
     const data = {
       fromName: body.fromName?.trim() ?? "",
       fromAddress: body.fromAddress?.trim() ?? "",
@@ -85,6 +83,9 @@ export async function PATCH(request: Request) {
       bankIban: bank.iban?.trim() ?? "",
       bankSwift: bank.swift?.trim() ?? "",
       bankCurrency: bank.currency?.trim() ?? "",
+      ...(body.extraBanks !== undefined
+        ? { extraBanks: sanitizeExtraBanks(body.extraBanks) }
+        : {}),
     };
 
     await prisma.userProfile.upsert({

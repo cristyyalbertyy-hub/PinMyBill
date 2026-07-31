@@ -1,4 +1,6 @@
+import { parseExtraBanks, sanitizeExtraBanks } from "@/lib/bank-utils";
 import type { ClientDetail } from "@/lib/profile-types";
+import type { InvoiceBankDetails } from "@/lib/invoice-types";
 
 type ClientRow = {
   id: string;
@@ -18,6 +20,7 @@ type ClientRow = {
   bankIban: string;
   bankSwift: string;
   bankCurrency: string;
+  extraBanks: unknown;
 };
 
 export function formatClient(row: ClientRow): ClientDetail {
@@ -41,6 +44,7 @@ export function formatClient(row: ClientRow): ClientDetail {
       swift: row.bankSwift,
       currency: row.bankCurrency,
     },
+    extraBanks: parseExtraBanks(row.extraBanks),
   };
 }
 
@@ -55,14 +59,8 @@ export type ClientWritePayload = {
   fromAddress?: string;
   fromEmail?: string;
   fromPhone?: string;
-  bank?: {
-    accountName?: string;
-    bankName?: string;
-    accountNo?: string;
-    iban?: string;
-    swift?: string;
-    currency?: string;
-  };
+  bank?: InvoiceBankDetails;
+  extraBanks?: InvoiceBankDetails[];
 };
 
 export function clientWriteData(body: ClientWritePayload): Record<string, unknown> {
@@ -83,12 +81,15 @@ export function clientWriteData(body: ClientWritePayload): Record<string, unknow
   if (body.fromPhone !== undefined) data.fromPhone = body.fromPhone.trim();
   const bank = body.bank;
   if (bank) {
-    if (bank.accountName !== undefined) data.bankAccountName = bank.accountName.trim();
-    if (bank.bankName !== undefined) data.bankName = bank.bankName.trim();
-    if (bank.accountNo !== undefined) data.bankAccountNo = bank.accountNo.trim();
-    if (bank.iban !== undefined) data.bankIban = bank.iban.trim();
-    if (bank.swift !== undefined) data.bankSwift = bank.swift.trim();
-    if (bank.currency !== undefined) data.bankCurrency = bank.currency.trim();
+    data.bankAccountName = bank.accountName?.trim() ?? "";
+    data.bankName = bank.bankName?.trim() ?? "";
+    data.bankAccountNo = bank.accountNo?.trim() ?? "";
+    data.bankIban = bank.iban?.trim() ?? "";
+    data.bankSwift = bank.swift?.trim() ?? "";
+    data.bankCurrency = bank.currency?.trim() ?? "";
+  }
+  if (body.extraBanks !== undefined) {
+    data.extraBanks = sanitizeExtraBanks(body.extraBanks);
   }
   return data;
 }
