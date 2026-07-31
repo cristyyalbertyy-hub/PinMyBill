@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
+import { useProject } from "@/lib/project-context";
 import type { ClientDetail, TimesheetImportPayload, TimesheetRow } from "@/lib/profile-types";
 import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
 import { computeTotalHours, formatHours } from "@/lib/timesheet-utils";
@@ -22,6 +23,7 @@ function TimesheetContent() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { ready: projectReady, activeProject, projects, setActiveProject } = useProject();
 
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -48,6 +50,7 @@ function TimesheetContent() {
   }, []);
 
   useEffect(() => {
+    if (!projectReady) return;
     void Promise.all([fetch("/api/clients"), fetch("/api/account/profile")])
       .then(async ([cl, pr]) => {
         if (!cl.ok) throw new Error("fetch");
@@ -55,20 +58,31 @@ function TimesheetContent() {
         setClients(clientRows);
 
         const paramClient = searchParams.get("client");
+        const activeName = activeProject?.name;
         const initial =
           paramClient && clientRows.some((c) => c.name === paramClient)
             ? paramClient
-            : clientRows[0]?.name ?? "";
+            : activeName && clientRows.some((c) => c.name === activeName)
+              ? activeName
+              : clientRows[0]?.name ?? "";
         setClientName(initial);
 
         if (pr.ok) {
           const profile = (await pr.json()) as { bank: { currency: string } };
           if (profile.bank.currency) setCurrency(profile.bank.currency);
+          else if (activeProject?.bank.currency) setCurrency(activeProject.bank.currency);
         }
       })
       .catch(() => setLoadError(t("timesheet.loadError")))
       .finally(() => setReady(true));
-  }, [searchParams, t]);
+  }, [activeProject, projectReady, searchParams, t]);
+
+  useEffect(() => {
+    if (!ready || !activeProject) return;
+    if (clients.some((c) => c.name === activeProject.name) && clientName !== activeProject.name) {
+      setClientName(activeProject.name);
+    }
+  }, [activeProject, clientName, clients, ready]);
 
   useEffect(() => {
     if (!ready || !clientName) return;
@@ -187,7 +201,12 @@ function TimesheetContent() {
                 {t("timesheet.client")}
                 <select
                   value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setClientName(name);
+                    const project = clients.find((c) => c.name === name);
+                    if (project) void setActiveProject(project.id);
+                  }}
                   className="pin-field"
                 >
                   {clients.length === 0 ? (

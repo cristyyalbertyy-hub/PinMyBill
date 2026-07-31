@@ -6,6 +6,7 @@ export type UserProfileData = {
   fromEmail: string;
   fromPhone: string;
   projectDirector: string;
+  activeClientId: string | null;
   bank: InvoiceBankDetails;
 };
 
@@ -17,6 +18,11 @@ export type ClientDetail = {
   address: string | null;
   email: string | null;
   phone: string | null;
+  fromName: string;
+  fromAddress: string;
+  fromEmail: string;
+  fromPhone: string;
+  bank: InvoiceBankDetails;
 };
 
 export type TimesheetRow = {

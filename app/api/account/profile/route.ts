@@ -19,6 +19,7 @@ export async function GET() {
         fromEmail: "",
         fromPhone: "",
         projectDirector: "",
+        activeClientId: null,
         bank: {
           accountName: "",
           bankName: "",
@@ -35,6 +36,7 @@ export async function GET() {
       fromEmail: row.fromEmail,
       fromPhone: row.fromPhone,
       projectDirector: row.projectDirector,
+      activeClientId: row.activeClientId,
       bank: {
         accountName: row.bankAccountName,
         bankName: row.bankName,

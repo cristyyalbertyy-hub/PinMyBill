@@ -39,31 +39,44 @@ model User {
 }
 
 model UserProfile {
-  userId          String @id
-  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fromName        String @default("")
-  fromAddress     String @default("")
-  fromEmail       String @default("")
-  fromPhone       String @default("")
-  projectDirector String @default("")
-  bankAccountName String @default("")
-  bankName        String @default("")
-  bankAccountNo   String @default("")
-  bankIban        String @default("")
-  bankSwift       String @default("")
-  bankCurrency    String @default("")
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromName        String  @default("")
+  fromAddress     String  @default("")
+  fromEmail       String  @default("")
+  fromPhone       String  @default("")
+  projectDirector String  @default("")
+  bankAccountName String  @default("")
+  bankName        String  @default("")
+  bankAccountNo   String  @default("")
+  bankIban        String  @default("")
+  bankSwift       String  @default("")
+  bankCurrency    String  @default("")
+  activeClientId  String?
+  activeClient    Client? @relation("ActiveProject", fields: [activeClientId], references: [id], onDelete: SetNull)
 }
 
 model Client {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   userId          String?
-  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String
-  startDate       DateTime? @db.Date
+  startDate       DateTime?     @db.Date
   projectDirector String?
   address         String?
   email           String?
   phone           String?
+  fromName        String        @default("")
+  fromAddress     String        @default("")
+  fromEmail       String        @default("")
+  fromPhone       String        @default("")
+  bankAccountName String        @default("")
+  bankName        String        @default("")
+  bankAccountNo   String        @default("")
+  bankIban        String        @default("")
+  bankSwift       String        @default("")
+  bankCurrency    String        @default("")
+  activeForProfiles UserProfile[] @relation("ActiveProject")
 
   @@unique([userId, name])
   @@index([userId])

@@ -6,6 +6,7 @@ import { ExpenseTypeCircle } from "@/components/expense-type-circle";
 import { uploadReceiptImage } from "@/lib/receipt-upload";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
+import { useProject } from "@/lib/project-context";
 import type { CurrencyCode, ExpenseItem, ExpenseType } from "@/lib/mock-data";
 
 const STANDARD_CURRENCY_CODES = new Set(["AED", "QAR", "SAR", "USD", "EUR"]);
@@ -38,6 +39,7 @@ type DbHealth = {
 function DespesasPageContent() {
   const t = useT();
   const searchParams = useSearchParams();
+  const { ready: projectReady, activeProject } = useProject();
   const OTHER_CATEGORY_SENTINEL = "__OUTRA__";
   const OTHER_CURRENCY_SENTINEL = "OUTRO";
   const [categoryNames, setCategoryNames] = useState<GroupedNames>({
@@ -167,9 +169,16 @@ function DespesasPageContent() {
       const names = clRes.map((c) => c.name);
       setClientNames(names);
       setClientLastCurrency(lastCurrencyByClient(exRes));
+      const paramClient = searchParams.get("client");
+      const preferred =
+        paramClient && names.includes(paramClient)
+          ? paramClient
+          : activeProject?.name && names.includes(activeProject.name)
+            ? activeProject.name
+            : names[0] ?? "";
       setUploadClient((prev) => {
         if (prev && names.includes(prev)) return prev;
-        return names[0] ?? "";
+        return preferred;
       });
     } catch {
       try {
@@ -185,11 +194,19 @@ function DespesasPageContent() {
     } finally {
       setReady(true);
     }
-  }, []);
+  }, [activeProject?.name, searchParams]);
 
   useEffect(() => {
+    if (!projectReady) return;
     void loadAll();
-  }, [loadAll]);
+  }, [loadAll, projectReady]);
+
+  useEffect(() => {
+    if (!ready || !activeProject) return;
+    if (clientNames.includes(activeProject.name) && uploadClient !== activeProject.name) {
+      setUploadClient(activeProject.name);
+    }
+  }, [activeProject, clientNames, ready, uploadClient]);
 
   useEffect(() => {
     if (uploadType !== "cliente" || !uploadClient) {

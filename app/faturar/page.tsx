@@ -10,6 +10,8 @@ import type { InvoiceBankDetails, InvoiceFormData, InvoiceLabels } from "@/lib/i
 import { computeTotalAmount } from "@/lib/invoice-types";
 import type { ClientDetail, TimesheetImportPayload } from "@/lib/profile-types";
 import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
+import { mergeProjectDefaults } from "@/lib/project-defaults";
+import { useProject } from "@/lib/project-context";
 import type { ExpenseItem } from "@/lib/mock-data";
 
 const BILLER_PROFILE_KEY = "pinmybill-biller-profile";
@@ -99,6 +101,7 @@ function loadBankProfile(): InvoiceBankDetails {
 function FaturarPageContent() {
   const t = useT();
   const searchParams = useSearchParams();
+  const { ready: projectReady, activeProject, profile, projects, setActiveProject } = useProject();
 
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
@@ -310,17 +313,28 @@ function FaturarPageContent() {
     ],
   );
 
-  const applyClientDetails = useCallback((client: string) => {
-    const detail = clientDetails.find((c) => c.name === client);
-    setToName(client);
-    if (detail) {
-      setToAddress(detail.address ?? "");
-      setToEmail(detail.email ?? "");
-      setToPhone(detail.phone ?? "");
-      if (detail.startDate) setStartDate(detail.startDate);
-      if (detail.projectDirector) setProjectName(detail.projectDirector);
-    }
-  }, [clientDetails]);
+  const applyClientDetails = useCallback(
+    (client: string) => {
+      const detail = clientDetails.find((c) => c.name === client);
+      setToName(client);
+      if (detail) {
+        setToAddress(detail.address ?? "");
+        setToEmail(detail.email ?? "");
+        setToPhone(detail.phone ?? "");
+        if (detail.startDate) setStartDate(detail.startDate);
+        if (detail.projectDirector) setProjectName(detail.projectDirector);
+
+        const defaults = mergeProjectDefaults(detail, profile);
+        setFromName(defaults.fromName);
+        setFromAddress(defaults.fromAddress);
+        setFromEmail(defaults.fromEmail);
+        setFromPhone(defaults.fromPhone);
+        setBank({ ...EMPTY_BANK, ...defaults.bank });
+        if (defaults.bank.currency) setCurrency(defaults.bank.currency);
+      }
+    },
+    [clientDetails, profile],
+  );
 
   const applyDefaultsFromClient = useCallback((client: string, expenses: ExpenseItem[]) => {
     applyClientDetails(client);
@@ -346,6 +360,7 @@ function FaturarPageContent() {
   }, [applyClientDetails, bank.currency]);
 
   useEffect(() => {
+    if (!projectReady) return;
     let cancelled = false;
 
     async function loadData() {
@@ -361,18 +376,25 @@ function FaturarPageContent() {
         if (!cancelled) setLoadError(t("invoice.loadError"));
       }
 
+      let clientCount = 0;
       try {
         const cl = await fetch("/api/clients");
         if (cl.ok) {
           const clRows = (await cl.json()) as ClientDetail[];
+          clientCount = clRows.length;
           if (!cancelled) {
             setClientDetails(clRows);
             const names = clRows.map((r) => r.name);
             setClients(names);
 
             const paramClient = searchParams.get("client");
+            const activeName = projects.find((p) => p.id === activeProject?.id)?.name;
             const initial =
-              paramClient && names.includes(paramClient) ? paramClient : names[0] ?? "";
+              paramClient && names.includes(paramClient)
+                ? paramClient
+                : activeName && names.includes(activeName)
+                  ? activeName
+                  : names[0] ?? "";
             if (initial) setClientName(initial);
           }
         }
@@ -384,20 +406,20 @@ function FaturarPageContent() {
       try {
         const prRes = await fetch("/api/account/profile");
         if (prRes.ok) {
-          const profile = (await prRes.json()) as {
+          const profileData = (await prRes.json()) as {
             fromName: string;
             fromAddress: string;
             fromEmail: string;
             fromPhone: string;
             bank: InvoiceBankDetails;
           };
-          if (!cancelled) {
-            setFromName(profile.fromName);
-            setFromAddress(profile.fromAddress);
-            setFromEmail(profile.fromEmail);
-            setFromPhone(profile.fromPhone);
-            setBank({ ...EMPTY_BANK, ...profile.bank });
+          if (!cancelled && clientCount === 0) {
             profileLoaded = true;
+            setFromName(profileData.fromName);
+            setFromAddress(profileData.fromAddress);
+            setFromEmail(profileData.fromEmail);
+            setFromPhone(profileData.fromPhone);
+            setBank({ ...EMPTY_BANK, ...profileData.bank });
           }
         }
       } catch {
@@ -437,7 +459,14 @@ function FaturarPageContent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, t]);
+  }, [activeProject?.id, projectReady, projects, searchParams, t]);
+
+  useEffect(() => {
+    if (!projectReady || !activeProject || !ready) return;
+    if (clients.includes(activeProject.name) && clientName !== activeProject.name) {
+      setClientName(activeProject.name);
+    }
+  }, [activeProject, clientName, clients, projectReady, ready]);
 
   useEffect(() => {
     if (!clientName || !ready) return;
@@ -525,7 +554,12 @@ function FaturarPageContent() {
                     {t("common.client")}
                     <select
                       value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setClientName(name);
+                        const project = projects.find((p) => p.name === name);
+                        if (project) void setActiveProject(project.id);
+                      }}
                       className="pin-field"
                     >
                       {clients.length === 0 ? (

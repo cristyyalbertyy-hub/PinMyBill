@@ -1,28 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { clientWriteData, formatClient } from "@/lib/client-format";
 import { requireUserId } from "@/lib/require-user";
 
 type Params = { params: Promise<{ id: string }> };
-
-function formatClient(row: {
-  id: string;
-  name: string;
-  startDate: Date | null;
-  projectDirector: string | null;
-  address: string | null;
-  email: string | null;
-  phone: string | null;
-}) {
-  return {
-    id: row.id,
-    name: row.name,
-    startDate: row.startDate ? row.startDate.toISOString().slice(0, 10) : null,
-    projectDirector: row.projectDirector,
-    address: row.address,
-    email: row.email,
-    phone: row.phone,
-  };
-}
 
 export async function PATCH(request: Request, context: Params) {
   const authz = await requireUserId();
@@ -30,14 +11,7 @@ export async function PATCH(request: Request, context: Params) {
 
   try {
     const { id } = await context.params;
-    const body = (await request.json()) as {
-      name?: string;
-      startDate?: string | null;
-      projectDirector?: string | null;
-      address?: string | null;
-      email?: string | null;
-      phone?: string | null;
-    };
+    const body = (await request.json()) as Parameters<typeof clientWriteData>[0];
 
     const owned = await prisma.client.findFirst({
       where: { id, userId: authz.userId },
@@ -46,33 +20,13 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const data: Record<string, unknown> = {};
-    if (body.name !== undefined) {
-      const name = body.name.trim();
-      if (!name) {
-        return NextResponse.json({ error: "Nome obrigatorio." }, { status: 400 });
-      }
-      data.name = name;
-    }
-    if (body.startDate !== undefined) {
-      data.startDate = body.startDate ? new Date(body.startDate) : null;
-    }
-    if (body.projectDirector !== undefined) {
-      data.projectDirector = body.projectDirector?.trim() || null;
-    }
-    if (body.address !== undefined) {
-      data.address = body.address?.trim() || null;
-    }
-    if (body.email !== undefined) {
-      data.email = body.email?.trim() || null;
-    }
-    if (body.phone !== undefined) {
-      data.phone = body.phone?.trim() || null;
+    if (body.name !== undefined && !body.name.trim()) {
+      return NextResponse.json({ error: "Nome obrigatorio." }, { status: 400 });
     }
 
     const updated = await prisma.client.update({
       where: { id },
-      data,
+      data: clientWriteData(body),
     });
     return NextResponse.json(formatClient(updated));
   } catch {
@@ -95,6 +49,21 @@ export async function DELETE(_request: Request, context: Params) {
     }
 
     await prisma.client.delete({ where: { id } });
+
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: authz.userId },
+    });
+    if (profile?.activeClientId === id) {
+      const fallback = await prisma.client.findFirst({
+        where: { userId: authz.userId },
+        orderBy: { name: "asc" },
+      });
+      await prisma.userProfile.update({
+        where: { userId: authz.userId },
+        data: { activeClientId: fallback?.id ?? null },
+      });
+    }
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Falha ao apagar cliente." }, { status: 500 });
