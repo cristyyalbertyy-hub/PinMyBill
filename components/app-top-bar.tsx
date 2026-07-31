@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -35,16 +34,7 @@ export function AppTopBar() {
         }}
       >
         <div className="pointer-events-auto flex items-center gap-2">
-          {!isHome ? (
-            <Link
-              href="/"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200/90 bg-white/95 text-lg leading-none shadow-md backdrop-blur-sm transition hover:bg-pin-teal-soft active:scale-95 dark:border-stone-600 dark:bg-stone-900/95"
-              aria-label={t("nav.homeAria")}
-              title={t("nav.homeAria")}
-            >
-              <span aria-hidden>🏠</span>
-            </Link>
-          ) : session ? (
+          {isHome && session ? (
             <button
               type="button"
               onClick={() => void signOut({ callbackUrl: "/login" })}

@@ -1,4 +1,7 @@
-export type Locale = "en" | "fr" | "pt";
+import { arOverrides } from "./locale-ar";
+import { esOverrides } from "./locale-es";
+
+export type Locale = "en" | "fr" | "pt" | "es" | "ar";
 
 export const DEFAULT_LOCALE: Locale = "en";
 export const STORAGE_KEY = "pinmybill-locale";
@@ -7,6 +10,8 @@ const en: Record<string, string> = {
   "lang.en": "English",
   "lang.fr": "Français",
   "lang.pt": "Português",
+  "lang.es": "Español",
+  "lang.ar": "العربية",
   "i18n.pickLanguage": "Choose language",
   "theme.pick": "Appearance (day / night)",
   "theme.toolbar": "Theme and day background",
@@ -1245,8 +1250,13 @@ const pt: Record<string, string> = {
   "auth.claimFail": "Não foi possível associar os dados.",
 };
 
+const es: Record<string, string> = { ...en, ...esOverrides };
+const ar: Record<string, string> = { ...en, ...arOverrides };
+
 export const dictionaries: Record<Locale, Record<string, string>> = {
   en,
   fr,
   pt,
+  es,
+  ar,
 };

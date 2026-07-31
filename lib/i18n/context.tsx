@@ -26,7 +26,8 @@ function readStoredLocale(): Locale {
   if (typeof window === "undefined") return DEFAULT_LOCALE;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === "en" || raw === "fr" || raw === "pt") return raw;
+    if (raw === "en" || raw === "fr" || raw === "pt" || raw === "es" || raw === "ar")
+      return raw;
   } catch {
     /* ignore */
   }
@@ -45,6 +46,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.lang = locale;
+    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
     try {
       window.localStorage.setItem(STORAGE_KEY, locale);
     } catch {

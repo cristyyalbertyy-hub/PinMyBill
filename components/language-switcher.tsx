@@ -7,6 +7,8 @@ const FLAGS: { locale: Locale; emoji: string; labelKey: string }[] = [
   { locale: "en", emoji: "🇬🇧", labelKey: "lang.en" },
   { locale: "fr", emoji: "🇫🇷", labelKey: "lang.fr" },
   { locale: "pt", emoji: "🇵🇹", labelKey: "lang.pt" },
+  { locale: "es", emoji: "🇪🇸", labelKey: "lang.es" },
+  { locale: "ar", emoji: "🇸🇦", labelKey: "lang.ar" },
 ];
 
 const pillClass =
@@ -49,7 +51,7 @@ export function LanguageSwitcher({
             key={loc}
             type="button"
             onClick={() => setLocale(loc)}
-            className={`flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none transition touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/50 focus-visible:ring-offset-2 ${
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-base leading-none transition touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pin-accent/50 focus-visible:ring-offset-2 ${
               active
                 ? "bg-pin-teal-soft ring-2 ring-pin-accent dark:bg-teal-950/80 dark:ring-teal-500"
                 : "opacity-75 hover:opacity-100 hover:bg-stone-100 dark:hover:bg-stone-800"
