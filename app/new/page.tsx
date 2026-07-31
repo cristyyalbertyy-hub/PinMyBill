@@ -7,9 +7,8 @@ import { TopNav } from "@/components/top-nav";
 import { emptyBank, EMPTY_BANK, sanitizeExtraBanks } from "@/lib/bank-utils";
 import { useT } from "@/lib/i18n/context";
 import { mergeProjectDefaults } from "@/lib/project-defaults";
-import { projectDisplayName } from "@/lib/project-label";
 import { useProject } from "@/lib/project-context";
-import type { ClientDetail, UserProfileData } from "@/lib/profile-types";
+import type { ClientDetail } from "@/lib/profile-types";
 import type { InvoiceBankDetails } from "@/lib/invoice-types";
 
 function todayIso() {
@@ -17,33 +16,12 @@ function todayIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function applyClientToForm(client: ClientDetail, profile: UserProfileData | null) {
-  const defaults = mergeProjectDefaults(client, profile);
-  return {
-    clientName: client.name,
-    projectName: client.projectName || client.name,
-    startDate: client.startDate ?? todayIso(),
-    projectDirector: client.projectDirector ?? defaults.projectDirector,
-    clientAddress: client.address ?? "",
-    clientEmail: client.email ?? "",
-    clientPhone: client.phone ?? "",
-    fromName: defaults.fromName,
-    fromAddress: defaults.fromAddress,
-    fromEmail: defaults.fromEmail,
-    fromPhone: defaults.fromPhone,
-    bank: { ...EMPTY_BANK, ...defaults.bank },
-    extraBanks: defaults.extraBanks.map((item) => ({ ...EMPTY_BANK, ...item })),
-  };
-}
-
 export default function NewProjectPage() {
   const t = useT();
-  const { ready: projectReady, projects, activeProject, profile, setActiveProject, refreshProjects } =
-    useProject();
+  const { ready: projectReady, profile, setActiveProject, refreshProjects } = useProject();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   const [clientName, setClientName] = useState("");
@@ -61,71 +39,30 @@ export default function NewProjectPage() {
   const [bank, setBank] = useState<InvoiceBankDetails>({ ...EMPTY_BANK });
   const [extraBanks, setExtraBanks] = useState<InvoiceBankDetails[]>([]);
 
-  const hasDefaults = Boolean(
-    fromName || bank.iban || bank.accountName || clientName || projectName || extraBanks.length > 0,
-  );
+  const hasDefaults = Boolean(fromName || bank.iban || bank.accountName || extraBanks.length > 0);
 
-  const fillFromClient = useCallback(
-    (client: ClientDetail | null, clientId: string) => {
-      setSelectedClientId(clientId);
-      if (!client) {
-        const defaults = mergeProjectDefaults(null, profile);
-        setFromName(defaults.fromName);
-        setFromAddress(defaults.fromAddress);
-        setFromEmail(defaults.fromEmail);
-        setFromPhone(defaults.fromPhone);
-        setProjectDirector(defaults.projectDirector);
-        setBank({ ...EMPTY_BANK, ...defaults.bank });
-        setExtraBanks(defaults.extraBanks.map((item) => ({ ...EMPTY_BANK, ...item })));
-        return;
-      }
-      const form = applyClientToForm(client, profile);
-      setClientName(form.clientName);
-      setProjectName(form.projectName);
-      setStartDate(form.startDate);
-      setProjectDirector(form.projectDirector);
-      setClientAddress(form.clientAddress);
-      setClientEmail(form.clientEmail);
-      setClientPhone(form.clientPhone);
-      setFromName(form.fromName);
-      setFromAddress(form.fromAddress);
-      setFromEmail(form.fromEmail);
-      setFromPhone(form.fromPhone);
-      setBank(form.bank);
-      setExtraBanks(form.extraBanks);
-    },
-    [profile],
-  );
+  const fillProfileDefaults = useCallback(() => {
+    const defaults = mergeProjectDefaults(null, profile);
+    setProjectName("");
+    setClientName("");
+    setStartDate(todayIso());
+    setProjectDirector(defaults.projectDirector);
+    setClientAddress("");
+    setClientEmail("");
+    setClientPhone("");
+    setFromName(defaults.fromName);
+    setFromAddress(defaults.fromAddress);
+    setFromEmail(defaults.fromEmail);
+    setFromPhone(defaults.fromPhone);
+    setBank({ ...EMPTY_BANK, ...defaults.bank });
+    setExtraBanks(defaults.extraBanks.map((item) => ({ ...EMPTY_BANK, ...item })));
+  }, [profile]);
 
   useEffect(() => {
     if (!projectReady || initialized) return;
-    if (activeProject) {
-      fillFromClient(activeProject, activeProject.id);
-    } else if (profile) {
-      fillFromClient(null, "");
-    }
+    fillProfileDefaults();
     setInitialized(true);
-  }, [activeProject, fillFromClient, initialized, profile, projectReady]);
-
-  useEffect(() => {
-    if (!projectReady || !initialized || !activeProject) return;
-    fillFromClient(activeProject, activeProject.id);
-  }, [activeProject?.id, fillFromClient, initialized, projectReady]);
-
-  function loadClient(id: string) {
-    if (!id) {
-      fillFromClient(null, "");
-      setClientName("");
-      setProjectName("");
-      setStartDate(todayIso());
-      setClientAddress("");
-      setClientEmail("");
-      setClientPhone("");
-      return;
-    }
-    const client = projects.find((c) => c.id === id);
-    if (client) fillFromClient(client, id);
-  }
+  }, [fillProfileDefaults, initialized, projectReady]);
 
   function updateExtraBank(index: number, value: InvoiceBankDetails) {
     setExtraBanks((prev) => prev.map((item, i) => (i === index ? value : item)));
@@ -172,29 +109,15 @@ export default function NewProjectPage() {
         }),
       });
 
-      let savedClientId = selectedClientId;
-      if (selectedClientId) {
-        const res = await fetch(`/api/clients/${selectedClientId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(clientPayload),
-        });
-        if (!res.ok) throw new Error("client");
-      } else {
-        const res = await fetch("/api/clients", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(clientPayload),
-        });
-        if (!res.ok) throw new Error("client");
-        const created = (await res.json()) as ClientDetail;
-        savedClientId = created.id;
-        setSelectedClientId(created.id);
-      }
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clientPayload),
+      });
+      if (!res.ok) throw new Error("client");
+      const created = (await res.json()) as ClientDetail;
 
-      if (savedClientId) {
-        await setActiveProject(savedClientId);
-      }
+      await setActiveProject(created.id);
       await refreshProjects();
       setSaved(true);
     } catch {
@@ -255,23 +178,6 @@ export default function NewProjectPage() {
             <section className="pin-card p-4 md:p-6">
               <h2 className="text-lg font-bold text-pin-ink">{t("new.projectSection")}</h2>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {projects.length > 0 ? (
-                  <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                    {t("project.loadExisting")}
-                    <select
-                      value={selectedClientId}
-                      onChange={(e) => loadClient(e.target.value)}
-                      className="pin-field"
-                    >
-                      <option value="">{t("common.newClient")}</option>
-                      {projects.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {projectDisplayName(c)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
                 <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
                   {t("new.projectName")}
                   <input
