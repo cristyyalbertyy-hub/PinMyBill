@@ -72,7 +72,6 @@ export default function PrologueAppsPage() {
   return (
     <div className="prologue-root relative overflow-x-hidden pb-16">
       <StarfieldCanvas />
-      <div className="prologue-orb" aria-hidden />
 
       <div className="relative z-10 mx-auto max-w-5xl px-5 pt-[max(2rem,env(safe-area-inset-top))]">
         <header className="prologue-reveal mb-16 flex flex-wrap items-center justify-between gap-4">
@@ -98,18 +97,24 @@ export default function PrologueAppsPage() {
         >
           <div
             className="prologue-logo-wrap mx-auto mb-8 w-[min(100%,22rem)]"
-            style={{
-              transform: `perspective(800px) rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)`,
-            }}
           >
-            <Image
-              src="/brand/prologue-logo.png"
-              alt="Prologue"
-              width={640}
-              height={240}
-              priority
-              className="h-auto w-full"
-            />
+            <div
+              className="prologue-logo-composite"
+              style={{
+                transform: `perspective(800px) rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)`,
+              }}
+            >
+              <div className="prologue-logo-orb" aria-hidden />
+              <Image
+                src="/brand/prologue-wordmark.png"
+                alt="Prologue"
+                width={1024}
+                height={415}
+                priority
+                className="prologue-logo-text h-auto w-full"
+              />
+              <span className="prologue-logo-period" aria-hidden />
+            </div>
           </div>
           <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-400/90">
             Apps
