@@ -11,6 +11,15 @@ type Particle = {
   orange: boolean;
 };
 
+/** Matches `.prologue-logo-wrap` max width (22rem) × orb width (36%). */
+const LOGO_MAX_PX = 22 * 16;
+const ORB_WIDTH_RATIO = 0.36;
+
+function logoOrbRadius(viewportWidth: number): number {
+  const logoWidth = Math.min(viewportWidth, LOGO_MAX_PX);
+  return (logoWidth * ORB_WIDTH_RATIO) / 2;
+}
+
 export function StarfieldCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
@@ -64,13 +73,14 @@ export function StarfieldCanvas() {
 
       const mx = mouseRef.current.x;
       const my = mouseRef.current.y;
+      const orbR = logoOrbRadius(width);
 
       for (const p of particles) {
         const dx = p.x - mx;
         const dy = p.y - my;
         const dist = Math.hypot(dx, dy);
-        if (dist < 120) {
-          const force = (120 - dist) / 120;
+        if (dist < orbR * 1.15) {
+          const force = (orbR * 1.15 - dist) / (orbR * 1.15);
           p.vx += (dx / (dist || 1)) * force * 0.08;
           p.vy += (dy / (dist || 1)) * force * 0.08;
         }
@@ -100,11 +110,24 @@ export function StarfieldCanvas() {
       }
 
       if (mx > 0) {
-        const grad = ctx.createRadialGradient(mx, my, 0, mx, my, 180);
-        grad.addColorStop(0, "rgba(249, 115, 22, 0.14)");
-        grad.addColorStop(1, "rgba(249, 115, 22, 0)");
+        const grad = ctx.createRadialGradient(
+          mx - orbR * 0.15,
+          my - orbR * 0.2,
+          0,
+          mx,
+          my,
+          orbR,
+        );
+        grad.addColorStop(0, "rgba(251, 146, 60, 0.9)");
+        grad.addColorStop(0.45, "rgba(249, 115, 22, 0.82)");
+        grad.addColorStop(1, "rgba(194, 65, 12, 0.55)");
+        ctx.beginPath();
+        ctx.arc(mx, my, orbR, 0, Math.PI * 2);
         ctx.fillStyle = grad;
-        ctx.fillRect(mx - 180, my - 180, 360, 360);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "rgba(249, 115, 22, 0.4)";
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
 
       frame = requestAnimationFrame(draw);
