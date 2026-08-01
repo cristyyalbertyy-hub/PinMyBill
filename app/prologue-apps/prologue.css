@@ -117,6 +117,49 @@
   }
 }
 
+.prologue-lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.2rem;
+}
+
+.prologue-lang-btn {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #78716c;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.prologue-lang-btn:hover {
+  color: #d6d3d1;
+}
+
+.prologue-lang-btn-active {
+  color: #0c0a09;
+  background: linear-gradient(135deg, #fdba74, var(--prologue-orange));
+  box-shadow: 0 2px 12px rgba(249, 115, 22, 0.35);
+}
+
+[dir="rtl"] .prologue-card-inner {
+  text-align: right;
+}
+
+[dir="rtl"] .prologue-counter {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
 .prologue-card {
   position: relative;
   overflow: hidden;
