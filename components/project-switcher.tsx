@@ -6,11 +6,10 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useT } from "@/lib/i18n/context";
 import { useProjectOptional } from "@/lib/project-context";
-import type { ClientDetail } from "@/lib/profile-types";
 import { projectDisplayName } from "@/lib/project-label";
 import { isAuthPublicPath } from "@/lib/auth-public-paths";
 import { isMarketingPath } from "@/lib/marketing-paths";
-import { ProjectDeleteModal } from "@/components/project-delete-modal";
+import { ProjectManageModal } from "@/components/project-manage-modal";
 
 export function ProjectSwitcher() {
   const pathname = usePathname();
@@ -18,12 +17,12 @@ export function ProjectSwitcher() {
   const t = useT();
   const projectCtx = useProjectOptional();
   const [open, setOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<ClientDetail | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || manageOpen) return;
     function onPointerDown(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -38,27 +37,32 @@ export function ProjectSwitcher() {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, manageOpen]);
 
   if (isAuthPublicPath(pathname) || isMarketingPath(pathname) || status !== "authenticated" || !projectCtx) {
     return null;
   }
 
-  const { ready, projects, activeProject, setActiveProject, deleteProject } = projectCtx;
+  const { ready, projects, activeProject, activeClientId, setActiveProject, deleteProject } =
+    projectCtx;
   const label = activeProject ? projectDisplayName(activeProject) : t("project.noProject");
 
-  async function handleDeleteConfirm() {
-    if (!deleteTarget) return;
+  async function handleDelete(projectId: string) {
     setDeleteBusy(true);
     try {
-      await deleteProject(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteProject(projectId);
+      setManageOpen(false);
       setOpen(false);
     } catch {
       globalThis.alert(t("project.deleteFail"));
     } finally {
       setDeleteBusy(false);
     }
+  }
+
+  function openManage() {
+    setOpen(false);
+    setManageOpen(true);
   }
 
   return (
@@ -90,46 +94,29 @@ export function ProjectSwitcher() {
             ) : (
               projects.map((project) => {
                 const selected = project.id === activeProject?.id;
-                const displayName = projectDisplayName(project);
                 return (
-                  <div
+                  <button
                     key={project.id}
-                    className={`flex items-center gap-1 pr-1 transition hover:bg-pin-teal-soft dark:hover:bg-stone-800 ${
-                      selected ? "bg-pin-teal-soft/70 dark:bg-teal-950/40" : ""
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      void setActiveProject(project.id);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-pin-teal-soft dark:hover:bg-stone-800 ${
+                      selected
+                        ? "bg-pin-teal-soft/70 font-semibold text-pin-ink dark:bg-teal-950/40"
+                        : "text-pin-ink"
                     }`}
                   >
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      onClick={() => {
-                        void setActiveProject(project.id);
-                        setOpen(false);
-                      }}
-                      className={`flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm ${
-                        selected ? "font-semibold text-pin-ink" : "text-pin-ink"
-                      }`}
-                    >
-                      <span aria-hidden>{selected ? "✓" : " "}</span>
-                      <span className="truncate">{displayName}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(project);
-                      }}
-                      aria-label={t("project.deleteAria", { name: displayName })}
-                      title={t("project.delete")}
-                      className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/50"
-                    >
-                      🗑
-                    </button>
-                  </div>
+                    <span aria-hidden>{selected ? "✓" : " "}</span>
+                    <span className="truncate">{projectDisplayName(project)}</span>
+                  </button>
                 );
               })
             )}
-            <div className="mt-1 border-t border-stone-200/80 px-2 py-1 dark:border-stone-700">
+            <div className="mt-1 space-y-0.5 border-t border-stone-200/80 px-2 py-1 dark:border-stone-700">
               <Link
                 href="/new"
                 onClick={() => setOpen(false)}
@@ -138,19 +125,29 @@ export function ProjectSwitcher() {
                 <span aria-hidden>＋</span>
                 {t("project.newProject")}
               </Link>
+              {projects.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={openManage}
+                  className="flex min-h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-pin-muted transition hover:bg-stone-100 hover:text-pin-ink dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                >
+                  {t("project.manage")}
+                </button>
+              ) : null}
             </div>
           </div>
         ) : null}
       </div>
 
-      {deleteTarget ? (
-        <ProjectDeleteModal
-          project={deleteTarget}
+      {manageOpen ? (
+        <ProjectManageModal
+          projects={projects}
+          initialProjectId={activeClientId}
           busy={deleteBusy}
           onClose={() => {
-            if (!deleteBusy) setDeleteTarget(null);
+            if (!deleteBusy) setManageOpen(false);
           }}
-          onConfirm={handleDeleteConfirm}
+          onDelete={handleDelete}
         />
       ) : null}
     </>
