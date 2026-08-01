@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/context";
+import { isMarketingPath } from "@/lib/marketing-paths";
 
 const links = [
   { href: "/", key: "mobile.home", icon: "🏠" },
@@ -16,6 +17,8 @@ const links = [
 export function MobileNav() {
   const pathname = usePathname();
   const t = useT();
+
+  if (isMarketingPath(pathname)) return null;
 
   return (
     <nav

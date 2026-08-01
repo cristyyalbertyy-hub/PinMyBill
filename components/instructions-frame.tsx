@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n/context";
 import { useTheme } from "@/components/theme-provider";
 import { isAuthPublicPath } from "@/lib/auth-public-paths";
+import { isMarketingPath } from "@/lib/marketing-paths";
 
 function InstructionsBody() {
   const t = useT();
@@ -49,7 +50,7 @@ export function InstructionsFrame({ children }: { children: React.ReactNode }) {
   const backupTitleId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pathname = usePathname();
-  const hideFloatingActions = isAuthPublicPath(pathname);
+  const hideFloatingActions = isAuthPublicPath(pathname) || isMarketingPath(pathname);
   const t = useT();
   const {
     preference,

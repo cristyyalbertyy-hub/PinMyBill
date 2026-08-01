@@ -1,0 +1,216 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { StarfieldCanvas } from "@/components/prologue/starfield-canvas";
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+const COMING_SOON = [
+  {
+    name: "Events Hub",
+    hint: "Check-in, credenciais e fluxo ao vivo — pensado para Prologue Events.",
+    emoji: "🎬",
+  },
+  {
+    name: "School Portal",
+    hint: "Formação e recursos para colaboradores Prologue School.",
+    emoji: "🎓",
+  },
+  {
+    name: "Mystery App",
+    hint: "Algo novo está a tomar forma. A bola laranja ainda não revelou tudo.",
+    emoji: "✨",
+  },
+] as const;
+
+function cardGlow(event: React.MouseEvent<HTMLElement>) {
+  const el = event.currentTarget;
+  const rect = el.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * 100;
+  const y = ((event.clientY - rect.top) / rect.height) * 100;
+  el.style.setProperty("--mx", `${x}%`);
+  el.style.setProperty("--my", `${y}%`);
+}
+
+export default function PrologueAppsPage() {
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    document.documentElement.style.colorScheme = "dark";
+  }, []);
+
+  useEffect(() => {
+    function onBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
+
+  async function handleInstall() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
+
+  function onHeroMove(event: React.MouseEvent<HTMLElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: x * 12, y: y * -8 });
+  }
+
+  return (
+    <div className="prologue-root relative overflow-x-hidden pb-16">
+      <StarfieldCanvas />
+      <div className="prologue-orb" aria-hidden />
+
+      <div className="relative z-10 mx-auto max-w-5xl px-5 pt-[max(2rem,env(safe-area-inset-top))]">
+        <header className="prologue-reveal mb-16 flex flex-wrap items-center justify-between gap-4">
+          <nav className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-widest text-stone-500">
+            <span className="text-stone-600">Prologue</span>
+            <span aria-hidden>·</span>
+            <span className="text-orange-400">Apps</span>
+            <span aria-hidden>·</span>
+            <span className="opacity-50">Events</span>
+            <span aria-hidden>·</span>
+            <span className="opacity-50">School</span>
+          </nav>
+          <span className="prologue-apps-badge">
+            <span className="prologue-apps-badge-dot" aria-hidden />
+            Hub de colaboradores
+          </span>
+        </header>
+
+        <section
+          className="prologue-reveal prologue-reveal-d1 relative mb-20 text-center"
+          onMouseMove={onHeroMove}
+          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+        >
+          <div
+            className="prologue-logo-wrap mx-auto mb-8 w-[min(100%,22rem)]"
+            style={{
+              transform: `perspective(800px) rotateY(${tilt.x}deg) rotateX(${tilt.y}deg)`,
+            }}
+          >
+            <Image
+              src="/brand/prologue-logo.png"
+              alt="Prologue"
+              width={640}
+              height={240}
+              priority
+              className="h-auto w-full"
+            />
+          </div>
+          <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-400/90">
+            Apps
+          </p>
+          <h1 className="mx-auto max-w-2xl text-balance text-2xl font-extrabold leading-tight text-white md:text-4xl">
+            Ferramentas digitais para quem faz a Prologue acontecer
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-stone-400 md:text-lg">
+            Descarrega apps feitas para a equipa — eventos, escola, produção. A bola laranja marca
+            o universo <strong className="font-semibold text-orange-300">Apps</strong>. Por agora
+            há uma; muitas mais estão a caminho.
+          </p>
+          <p className="prologue-counter mt-8 text-3xl font-black md:text-5xl">
+            1 <span className="text-xl font-bold text-stone-500 md:text-2xl">disponível</span> · ∞{" "}
+            <span className="text-xl font-bold text-stone-500 md:text-2xl">a caminho</span>
+          </p>
+        </section>
+
+        <section className="prologue-reveal prologue-reveal-d2 mb-6">
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">
+            Disponível agora
+          </h2>
+          <article
+            className="prologue-card prologue-card-live"
+            onMouseMove={cardGlow}
+          >
+            <div className="prologue-card-inner relative grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-orange-500/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-orange-300">
+                    Live
+                  </span>
+                  <span className="text-2xl" aria-hidden>
+                    📌
+                  </span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-white">PinMyBill</h3>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-stone-400 md:text-base">
+                  Recibos, timesheet e faturas num só sítio — para freelancers e equipas de
+                  produção que precisam de clareza entre projectos.
+                </p>
+                <ul className="mt-4 flex flex-wrap gap-2 text-xs text-stone-500">
+                  <li className="rounded-lg bg-white/5 px-2 py-1">Recibos + foto</li>
+                  <li className="rounded-lg bg-white/5 px-2 py-1">Timesheet</li>
+                  <li className="rounded-lg bg-white/5 px-2 py-1">Fatura PDF</li>
+                  <li className="rounded-lg bg-white/5 px-2 py-1">Multi-idioma</li>
+                </ul>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
+                <Link href="/login" className="prologue-btn-primary">
+                  Abrir app
+                </Link>
+                {installPrompt ? (
+                  <button type="button" onClick={() => void handleInstall()} className="prologue-btn-ghost">
+                    Instalar no telemóvel
+                  </button>
+                ) : (
+                  <Link href="/" className="prologue-btn-ghost">
+                    Ver painel
+                  </Link>
+                )}
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="prologue-reveal prologue-reveal-d3">
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">
+            Em breve — fica atenta
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {COMING_SOON.map((app) => (
+              <article
+                key={app.name}
+                className="prologue-card prologue-card-soon"
+                onMouseMove={cardGlow}
+              >
+                <div className="prologue-card-inner p-5">
+                  <span className="text-2xl" aria-hidden>
+                    {app.emoji}
+                  </span>
+                  <h3 className="mt-3 font-bold text-stone-200">{app.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-stone-500">{app.hint}</p>
+                  <p className="mt-4 text-xs font-bold uppercase tracking-wider text-orange-400/70">
+                    Em breve
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <footer className="prologue-reveal prologue-reveal-d4 mt-20 border-t border-white/5 pt-8 text-center text-sm text-stone-600">
+          <p>
+            Prologue Apps — feito com carinho para colaboradores Events & School.
+          </p>
+          <p className="mt-2 text-xs text-stone-700">
+            Move o rato — as partículas laranja seguem-te. A surpresa continua a crescer. 🍊
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}

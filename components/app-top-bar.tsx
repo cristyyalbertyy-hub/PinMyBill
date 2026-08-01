@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { ProjectSwitcher } from "@/components/project-switcher";
 import { useT } from "@/lib/i18n/context";
 import { isAuthPublicPath } from "@/lib/auth-public-paths";
+import { isMarketingPath } from "@/lib/marketing-paths";
 
 export function AppTopBar() {
   const pathname = usePathname();
@@ -13,7 +14,7 @@ export function AppTopBar() {
   const t = useT();
   const isHome = pathname === "/";
 
-  if (isAuthPublicPath(pathname)) return null;
+  if (isAuthPublicPath(pathname) || isMarketingPath(pathname)) return null;
 
   return (
     <>

@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/context";
 import { useProjectOptional } from "@/lib/project-context";
 import { projectDisplayName } from "@/lib/project-label";
 import { isAuthPublicPath } from "@/lib/auth-public-paths";
+import { isMarketingPath } from "@/lib/marketing-paths";
 
 export function ProjectSwitcher() {
   const pathname = usePathname();
@@ -35,7 +36,7 @@ export function ProjectSwitcher() {
     };
   }, [open]);
 
-  if (isAuthPublicPath(pathname) || status !== "authenticated" || !projectCtx) {
+  if (isAuthPublicPath(pathname) || isMarketingPath(pathname) || status !== "authenticated" || !projectCtx) {
     return null;
   }
 
