@@ -19,6 +19,7 @@ type ProjectContextValue = {
   activeClientId: string | null;
   profile: UserProfileData | null;
   setActiveProject: (clientId: string | null) => Promise<void>;
+  deleteProject: (clientId: string) => Promise<void>;
   refreshProjects: () => Promise<void>;
 };
 
@@ -88,6 +89,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const deleteProject = useCallback(
+    async (clientId: string) => {
+      const res = await fetch(`/api/clients/${clientId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? "delete-failed");
+      }
+      await load();
+    },
+    [load],
+  );
+
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeClientId) ?? null,
     [activeClientId, projects],
@@ -101,9 +114,10 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       activeClientId,
       profile,
       setActiveProject,
+      deleteProject,
       refreshProjects: load,
     }),
-    [ready, projects, activeProject, activeClientId, profile, setActiveProject, load],
+    [ready, projects, activeProject, activeClientId, profile, setActiveProject, deleteProject, load],
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
