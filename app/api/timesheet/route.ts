@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { computeTotalHours } from "@/lib/timesheet-utils";
+import { countDaysInclusive, isIsoDate } from "@/lib/timesheet-utils";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -10,21 +10,18 @@ function formatRow(row: {
   id: string;
   clientName: string;
   workDate: Date;
-  startTime: string;
-  endTime: string;
-  breakMinutes: number;
+  description: string | null;
   days: { toNumber(): number };
   rate: { toNumber(): number };
   currency: string;
 }) {
+  const endDate = isIsoDate(row.description) ? row.description : null;
   return {
     id: row.id,
     clientName: row.clientName,
     workDate: row.workDate.toISOString().slice(0, 10),
-    startTime: row.startTime,
-    endTime: row.endTime,
-    breakMinutes: row.breakMinutes,
-    totalHours: row.days.toNumber(),
+    endDate,
+    days: row.days.toNumber(),
     rate: row.rate.toNumber(),
     currency: row.currency,
   };
@@ -59,9 +56,8 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       clientName: string;
       workDate: string;
-      startTime?: string;
-      endTime?: string;
-      breakMinutes?: number;
+      endDate?: string;
+      days?: number;
       rate: number;
       currency: string;
     };
@@ -71,12 +67,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cliente e data obrigatorios." }, { status: 400 });
     }
 
-    const startTime = body.startTime?.trim() || "09:00";
-    const endTime = body.endTime?.trim() || "17:00";
-    const breakMinutes = Math.max(0, Number(body.breakMinutes) || 0);
     const rate = Number(body.rate);
-    const totalHours = computeTotalHours(startTime, endTime, breakMinutes);
     const currency = body.currency?.trim().toUpperCase() ?? "";
+    const endDate = body.endDate?.trim() ?? "";
 
     if (!Number.isFinite(rate) || rate < 0) {
       return NextResponse.json({ error: "Rate invalida." }, { status: 400 });
@@ -84,8 +77,22 @@ export async function POST(request: Request) {
     if (!currency) {
       return NextResponse.json({ error: "Moeda obrigatoria." }, { status: 400 });
     }
-    if (totalHours <= 0) {
-      return NextResponse.json({ error: "Horas invalidas." }, { status: 400 });
+
+    let days = 1;
+    let description: string | null = null;
+
+    if (endDate) {
+      if (!isIsoDate(endDate)) {
+        return NextResponse.json({ error: "Data final invalida." }, { status: 400 });
+      }
+      days = countDaysInclusive(body.workDate, endDate);
+      if (days <= 0) {
+        return NextResponse.json({ error: "Intervalo de datas invalido." }, { status: 400 });
+      }
+      description = endDate;
+    } else {
+      const explicitDays = Number(body.days);
+      days = Number.isFinite(explicitDays) && explicitDays > 0 ? explicitDays : 1;
     }
 
     const created = await prisma.timesheetEntry.create({
@@ -93,10 +100,11 @@ export async function POST(request: Request) {
         userId: authz.userId,
         clientName,
         workDate: new Date(body.workDate),
-        startTime,
-        endTime,
-        breakMinutes,
-        days: totalHours,
+        startTime: "00:00",
+        endTime: "00:00",
+        breakMinutes: 0,
+        days,
+        description,
         rate,
         currency,
       },

@@ -35,6 +35,7 @@ type InvoiceFormLine = {
   description: string;
   amount: string;
   autoAmount?: boolean;
+  autoTimesheet?: boolean;
 };
 
 function newFormLine(): InvoiceFormLine {
@@ -200,14 +201,31 @@ function FaturarPageContent() {
       }
     }
 
-    if (timesheetImport) {
-      for (const line of timesheetImport.lineItems) {
-        items.push(line);
-      }
-    }
-
     for (const row of formLines) {
       if (!row.visible) continue;
+
+      if (row.autoTimesheet) {
+        if (timesheetImport) {
+          for (const line of timesheetImport.lineItems) {
+            items.push({
+              ...line,
+              description: row.description.trim() || line.description,
+            });
+          }
+        } else {
+          const amt = parseAmount(row.amount);
+          const desc = row.description.trim();
+          if (amt <= 0) continue;
+          items.push({
+            description: desc || t("invoice.timesheetLine"),
+            duration: 1,
+            rate: amt,
+            amount: amt,
+          });
+        }
+        continue;
+      }
+
       const amt = row.autoAmount ? expenseTotal : parseAmount(row.amount);
       const desc = row.description.trim();
       if (amt <= 0) continue;
@@ -496,30 +514,58 @@ function FaturarPageContent() {
   }, [computedTotal, totalManual]);
 
   useEffect(() => {
-    if (lineMode !== "simple" || expenseTotal <= 0) {
-      setFormLines((prev) => prev.filter((line) => !line.autoAmount));
-      return;
-    }
-
     setFormLines((prev) => {
-      const expenseLine = prev.find((line) => line.autoAmount);
-      if (expenseLine) {
-        return prev.map((line) =>
-          line.autoAmount ? { ...line, amount: expenseTotal.toFixed(3) } : line,
-        );
+      let next = [...prev];
+
+      if (lineMode === "simple" && expenseTotal > 0) {
+        const expenseLine = next.find((line) => line.autoAmount);
+        if (expenseLine) {
+          next = next.map((line) =>
+            line.autoAmount ? { ...line, amount: expenseTotal.toFixed(3) } : line,
+          );
+        } else {
+          next = [
+            {
+              id: "expense-auto",
+              visible: true,
+              description: "expenses",
+              amount: expenseTotal.toFixed(3),
+              autoAmount: true,
+            },
+            ...next,
+          ];
+        }
+      } else {
+        next = next.filter((line) => !line.autoAmount);
       }
-      return [
-        {
-          id: "expense-auto",
+
+      const timesheetAmount = timesheetImport ? timesheetImport.total.toFixed(3) : undefined;
+      const timesheetLine = next.find((line) => line.autoTimesheet);
+      if (timesheetLine) {
+        if (timesheetAmount !== undefined) {
+          next = next.map((line) =>
+            line.autoTimesheet ? { ...line, amount: timesheetAmount } : line,
+          );
+        }
+      } else {
+        const newTimesheetLine: InvoiceFormLine = {
+          id: "timesheet-auto",
           visible: true,
-          description: "expenses",
-          amount: expenseTotal.toFixed(3),
-          autoAmount: true,
-        },
-        ...prev,
-      ];
+          description: "timesheet",
+          amount: timesheetAmount ?? "",
+          autoTimesheet: true,
+        };
+        const expenseIdx = next.findIndex((line) => line.autoAmount);
+        if (expenseIdx >= 0) {
+          next.splice(expenseIdx + 1, 0, newTimesheetLine);
+        } else {
+          next = [newTimesheetLine, ...next];
+        }
+      }
+
+      return next;
     });
-  }, [expenseTotal, lineMode]);
+  }, [expenseTotal, lineMode, timesheetImport]);
 
   useEffect(() => {
     try {
@@ -569,7 +615,7 @@ function FaturarPageContent() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-6xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">
           {t("invoice.title")}
@@ -671,7 +717,7 @@ function FaturarPageContent() {
                   {timesheetImport ? (
                     <p className="rounded-xl bg-pin-teal-soft/50 px-3 py-2 text-xs text-pin-muted dark:bg-teal-950/30">
                       {t("invoice.timesheetIncluded", {
-                        hours: String(timesheetImport.lineItems[0]?.duration ?? 0),
+                        days: String(timesheetImport.lineItems[0]?.duration ?? 0),
                         amount: timesheetImport.total.toFixed(2),
                         currency: timesheetImport.currency,
                       })}
@@ -858,7 +904,7 @@ function FaturarPageContent() {
                             type="number"
                             min="0"
                             step="0.001"
-                            readOnly={row.autoAmount}
+                            readOnly={row.autoAmount || (row.autoTimesheet && !!timesheetImport)}
                             value={row.amount}
                             onChange={(e) =>
                               setFormLines((prev) =>
@@ -868,11 +914,13 @@ function FaturarPageContent() {
                               )
                             }
                             className={`pin-field w-full text-right ${
-                              row.autoAmount ? "bg-stone-100 dark:bg-stone-800" : ""
+                              row.autoAmount || (row.autoTimesheet && !!timesheetImport)
+                                ? "bg-stone-100 dark:bg-stone-800"
+                                : ""
                             }`}
                             placeholder="0"
                           />
-                          {row.autoAmount ? (
+                          {row.autoAmount || row.autoTimesheet ? (
                             <span className="w-8" aria-hidden />
                           ) : (
                             <button
@@ -888,16 +936,6 @@ function FaturarPageContent() {
                           )}
                         </div>
                       ))}
-                    </div>
-                  ) : null}
-
-                  {timesheetImport ? (
-                    <div className="sm:col-span-2 rounded-xl bg-pin-teal-soft/40 px-3 py-2 text-sm dark:bg-teal-950/30">
-                      <p className="font-medium text-pin-ink">{t("invoice.timesheetLine")}</p>
-                      <p className="text-pin-muted">
-                        {timesheetImport.lineItems[0]?.description ?? t("invoice.timesheetLine")} —{" "}
-                        {timesheetImport.total.toFixed(2)} {timesheetImport.currency}
-                      </p>
                     </div>
                   ) : null}
 
@@ -1070,7 +1108,7 @@ function FaturarPageContent() {
 function FaturarSuspenseFallback() {
   const t = useT();
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
       </div>

@@ -476,7 +476,7 @@ function DespesasPageContent() {
   const clientsList = clientNames.length ? clientNames : [""];
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-8 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">
           {t("desp.title")}
@@ -874,7 +874,7 @@ function DespesasPageContent() {
 function DespesasSuspenseFallback() {
   const t = useT();
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <p className="text-sm font-medium text-pin-muted">{t("common.loading")}</p>
       </div>

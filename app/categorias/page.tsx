@@ -211,7 +211,7 @@ export default function CategoriasPage() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-6 text-3xl font-extrabold tracking-tight text-pin-ink md:mb-8 md:text-4xl">
           {t("cat.title")}

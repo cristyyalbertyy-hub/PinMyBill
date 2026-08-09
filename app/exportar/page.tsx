@@ -6,14 +6,16 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { TopNav } from "@/components/top-nav";
 import { useT } from "@/lib/i18n/context";
+import { useProject } from "@/lib/project-context";
 import { compressImageForPdf, EMAIL_ATTACHMENT_LIMIT_BYTES, formatFileSize } from "@/lib/pdf-image";
 import type { CurrencyCode, ExpenseItem } from "@/lib/mock-data";
 
 type ExportMode =
   | "periodo-empresa"
   | "periodo-pessoal"
-  | "cliente-todo"
-  | "cliente-periodo";
+  | "cliente-todo";
+
+type ClientPeriodMode = "all" | "range";
 
 type DbHealth = {
   ok: boolean;
@@ -86,9 +88,11 @@ function dateRangeFromItems(items: ExpenseItem[]): { start: string; end: string 
 
 export default function ExportarPage() {
   const t = useT();
+  const { ready: projectReady, activeProject, projects, setActiveProject } = useProject();
   const [expenseItems, setExpenseItems] = useState<ExpenseItem[]>([]);
   const [clients, setClients] = useState<string[]>([]);
-  const [mode, setMode] = useState<ExportMode>("cliente-periodo");
+  const [mode, setMode] = useState<ExportMode>("cliente-todo");
+  const [clientPeriodMode, setClientPeriodMode] = useState<ClientPeriodMode>("all");
   const [clientName, setClientName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -101,6 +105,7 @@ export default function ExportarPage() {
   const [dbHealth, setDbHealth] = useState<DbHealth | null>(null);
 
   useEffect(() => {
+    if (!projectReady) return;
     let cancelled = false;
 
     async function loadData() {
@@ -127,7 +132,10 @@ export default function ExportarPage() {
           if (!cancelled) {
             const names = clRows.map((r) => r.name);
             setClients(names);
-            if (names[0]) setClientName((prev) => prev || names[0]);
+            const activeName = projects.find((p) => p.id === activeProject?.id)?.name;
+            const initial =
+              activeName && names.includes(activeName) ? activeName : names[0] ?? "";
+            if (initial) setClientName(initial);
             clientsOk = true;
           }
         }
@@ -164,7 +172,32 @@ export default function ExportarPage() {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [activeProject?.id, projectReady, projects, t]);
+
+  useEffect(() => {
+    if (!projectReady || !activeProject) return;
+    if (clients.includes(activeProject.name) && clientName !== activeProject.name) {
+      setClientName(activeProject.name);
+    }
+  }, [activeProject, clientName, clients, projectReady]);
+
+  useEffect(() => {
+    if (mode !== "cliente-todo" || clientPeriodMode !== "range") return;
+    const pool = expensesForMode(expenseItems, mode, clientName);
+    const range = dateRangeFromItems(pool);
+    if (!range) return;
+    setStartDate(range.start);
+    setEndDate(range.end);
+  }, [clientName, clientPeriodMode, expenseItems, mode]);
+
+  useEffect(() => {
+    if (mode !== "periodo-empresa" && mode !== "periodo-pessoal") return;
+    const pool = expensesForMode(expenseItems, mode, clientName);
+    const range = dateRangeFromItems(pool);
+    if (!range) return;
+    setStartDate(range.start);
+    setEndDate(range.end);
+  }, [expenseItems, mode, clientName]);
 
   useEffect(() => {
     void fetch("/api/health/db")
@@ -176,14 +209,6 @@ export default function ExportarPage() {
         setDbHealth(null);
       });
   }, []);
-
-  useEffect(() => {
-    const pool = expensesForMode(expenseItems, mode, clientName);
-    const range = dateRangeFromItems(pool);
-    if (!range) return;
-    setStartDate(range.start);
-    setEndDate(range.end);
-  }, [expenseItems, mode, clientName]);
 
   const filteredRows = useMemo(() => {
     const base = expenseItems.filter((item) => !hiddenRows.includes(item.id));
@@ -201,13 +226,16 @@ export default function ExportarPage() {
       return base.filter((item) => item.type === "pessoal" && inDateRange(item.date));
     }
     if (mode === "cliente-todo") {
-      return base.filter((item) => item.type === "cliente" && item.clientName === clientName);
+      const clientRows = base.filter(
+        (item) => item.type === "cliente" && item.clientName === clientName,
+      );
+      if (clientPeriodMode === "range") {
+        return clientRows.filter((item) => inDateRange(item.date));
+      }
+      return clientRows;
     }
-    // cliente-periodo
-    return base.filter(
-      (item) => item.type === "cliente" && item.clientName === clientName && inDateRange(item.date),
-    );
-  }, [clientName, endDate, expenseItems, hiddenRows, mode, startDate]);
+    return [];
+  }, [clientName, clientPeriodMode, endDate, expenseItems, hiddenRows, mode, startDate]);
 
   const visibleRows = useMemo(
     () => [...filteredRows].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
@@ -290,18 +318,14 @@ export default function ExportarPage() {
           : mode === "periodo-pessoal"
             ? t("export.pdfTitlePeriodPersonal", { start: periodStart, end: periodEnd })
             : mode === "cliente-todo"
-              ? exportPeriod
+              ? clientPeriodMode === "range"
                 ? t("export.pdfTitleClientPeriod", {
                     name: clientName,
-                    start: exportPeriod.start,
-                    end: exportPeriod.end,
+                    start: exportPeriod?.start ?? periodStart,
+                    end: exportPeriod?.end ?? periodEnd,
                   })
                 : t("export.pdfTitleClientAll", { name: clientName })
-              : t("export.pdfTitleClientPeriod", {
-                  name: clientName,
-                  start: periodStart,
-                  end: periodEnd,
-                });
+              : t("export.pdfTitleClientAll", { name: clientName });
 
       doc.setFontSize(14);
       doc.text(t("export.pdfDocumentTitle"), 40, 30);
@@ -312,27 +336,20 @@ export default function ExportarPage() {
         [
           t("export.table.num"),
           t("export.table.date"),
-          t("export.col.type"),
           t("export.table.category"),
           t("export.table.merchant"),
           t("export.table.value"),
-          t("export.col.currency"),
           t("export.col.comment"),
         ],
       ];
-      const body = visibleRows.map((r, idx) => {
-        const type = expenseTypeLabel(r.type);
-        return [
-          String(idx + 1),
-          r.date,
-          type,
-          r.category,
-          r.merchant,
-          fmtAmount(r.amount),
-          r.currency,
-          r.comment ?? "",
-        ];
-      });
+      const body = visibleRows.map((r, idx) => [
+        String(idx + 1),
+        r.date,
+        r.category,
+        r.merchant,
+        fmtAmount(r.amount),
+        r.comment ?? "",
+      ]);
 
       autoTable(doc, {
         head,
@@ -341,7 +358,7 @@ export default function ExportarPage() {
         styles: { fontSize: 7, cellPadding: 2.5 },
         columnStyles: {
           0: { cellWidth: 22, halign: "center", fontStyle: "bold" },
-          7: { cellWidth: 90 },
+          5: { cellWidth: 90 },
         },
         headStyles: { fillColor: [13, 148, 136], textColor: 255 },
         theme: "grid",
@@ -441,7 +458,7 @@ export default function ExportarPage() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-6 text-3xl font-extrabold tracking-tight text-pin-ink md:mb-8 md:text-4xl">
           {t("export.title")}
@@ -467,18 +484,21 @@ export default function ExportarPage() {
                 value={mode}
                 onChange={(event) => {
                   setHiddenRows([]);
-                  setMode(event.target.value as ExportMode);
+                  const next = event.target.value as ExportMode;
+                  setMode(next);
+                  if (next === "cliente-todo") {
+                    setClientPeriodMode("all");
+                  }
                 }}
                 className="pin-field"
               >
                 <option value="cliente-todo">{t("export.modeClientAll")}</option>
-                <option value="cliente-periodo">{t("export.modeClientPeriod")}</option>
                 <option value="periodo-empresa">{t("export.modePeriodCompany")}</option>
                 <option value="periodo-pessoal">{t("export.modePeriodPersonal")}</option>
               </select>
             </label>
 
-            {(mode === "cliente-todo" || mode === "cliente-periodo") && (
+            {mode === "cliente-todo" && (
               <div className="flex flex-col gap-2">
                 <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
                   {t("export.client")}
@@ -486,7 +506,10 @@ export default function ExportarPage() {
                     value={clientName}
                     onChange={(event) => {
                       setHiddenRows([]);
-                      setClientName(event.target.value);
+                      const name = event.target.value;
+                      setClientName(name);
+                      const project = projects.find((p) => p.name === name);
+                      if (project) void setActiveProject(project.id);
                     }}
                     className="pin-field"
                   >
@@ -495,6 +518,20 @@ export default function ExportarPage() {
                         {client}
                       </option>
                     ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium text-pin-muted">
+                  {t("invoice.periodMode")}
+                  <select
+                    value={clientPeriodMode}
+                    onChange={(event) => {
+                      setHiddenRows([]);
+                      setClientPeriodMode(event.target.value as ClientPeriodMode);
+                    }}
+                    className="pin-field"
+                  >
+                    <option value="all">{t("invoice.periodAll")}</option>
+                    <option value="range">{t("invoice.periodRange")}</option>
                   </select>
                 </label>
                 {clientName ? (
@@ -511,7 +548,7 @@ export default function ExportarPage() {
 
             {mode === "periodo-empresa" ||
             mode === "periodo-pessoal" ||
-            mode === "cliente-periodo" ? (
+            (mode === "cliente-todo" && clientPeriodMode === "range") ? (
               <div className="col-span-full grid grid-cols-2 gap-3 sm:gap-4">
                 <label className="flex min-w-0 flex-col gap-2 text-sm font-medium text-pin-muted">
                   {t("export.startDate")}

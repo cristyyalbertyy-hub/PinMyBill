@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/require-user";
-import { computeTotalHours } from "@/lib/timesheet-utils";
+import { countDaysInclusive, isIsoDate } from "@/lib/timesheet-utils";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -32,9 +32,8 @@ export async function PATCH(request: Request, context: Params) {
     const { id } = await context.params;
     const body = (await request.json()) as {
       workDate?: string;
-      startTime?: string;
-      endTime?: string;
-      breakMinutes?: number;
+      endDate?: string | null;
+      days?: number;
       rate?: number;
       currency?: string;
     };
@@ -46,21 +45,35 @@ export async function PATCH(request: Request, context: Params) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const startTime = body.startTime?.trim() ?? owned.startTime;
-    const endTime = body.endTime?.trim() ?? owned.endTime;
-    const breakMinutes =
-      body.breakMinutes !== undefined ? Math.max(0, body.breakMinutes) : owned.breakMinutes;
+    const workDate =
+      body.workDate !== undefined
+        ? body.workDate
+        : owned.workDate.toISOString().slice(0, 10);
 
-    const data: Record<string, unknown> = {
-      startTime,
-      endTime,
-      breakMinutes,
-      days: computeTotalHours(startTime, endTime, breakMinutes),
-    };
+    const data: Record<string, unknown> = {};
 
     if (body.workDate !== undefined) data.workDate = new Date(body.workDate);
     if (body.rate !== undefined) data.rate = body.rate;
     if (body.currency !== undefined) data.currency = body.currency.trim().toUpperCase();
+
+    if (body.endDate !== undefined) {
+      if (body.endDate === null || body.endDate === "") {
+        data.description = null;
+        data.days = body.days ?? 1;
+      } else if (isIsoDate(body.endDate)) {
+        const days = countDaysInclusive(workDate, body.endDate);
+        if (days <= 0) {
+          return NextResponse.json({ error: "Intervalo de datas invalido." }, { status: 400 });
+        }
+        data.description = body.endDate;
+        data.days = days;
+      } else {
+        return NextResponse.json({ error: "Data final invalida." }, { status: 400 });
+      }
+    } else if (body.days !== undefined) {
+      data.days = body.days;
+      data.description = null;
+    }
 
     await prisma.timesheetEntry.update({ where: { id }, data });
     return NextResponse.json({ ok: true });

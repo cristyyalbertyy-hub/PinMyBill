@@ -32,10 +32,8 @@ export type TimesheetRow = {
   id: string;
   clientName: string;
   workDate: string;
-  startTime: string;
-  endTime: string;
-  breakMinutes: number;
-  totalHours: number;
+  endDate: string | null;
+  days: number;
   rate: number;
   currency: string;
 };

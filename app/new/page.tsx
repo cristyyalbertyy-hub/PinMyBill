@@ -11,6 +11,8 @@ import { useProject } from "@/lib/project-context";
 import type { ClientDetail } from "@/lib/profile-types";
 import type { InvoiceBankDetails } from "@/lib/invoice-types";
 
+const PROJECT_CURRENCIES = ["EUR", "AED", "QAR", "USD"] as const;
+
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -128,7 +130,7 @@ export default function NewProjectPage() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 pt-4 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-3xl">
         <h1 className="mb-2 text-3xl font-extrabold tracking-tight text-pin-ink md:text-4xl">
           {t("new.title")}
@@ -318,6 +320,28 @@ export default function NewProjectPage() {
                   {t("new.addBankAccount")}
                 </button>
               </div>
+            </section>
+
+            <section className="pin-card p-4 md:p-6">
+              <h2 className="text-lg font-bold text-pin-ink">{t("new.currencySection")}</h2>
+              <label className="mt-3 flex flex-col gap-1 text-sm font-medium text-pin-muted">
+                {t("common.currency")}
+                <select
+                  value={bank.currency}
+                  onChange={(e) =>
+                    setBank((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))
+                  }
+                  className="pin-field"
+                  required
+                >
+                  <option value="">{t("common.selectCurrency")}</option>
+                  {PROJECT_CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </section>
 
             <button

@@ -71,11 +71,11 @@ export default function Home() {
   }
 
   return (
-    <main className="pin-page px-4 pb-8 md:p-10">
+    <main className="pin-page pb-8 md:pb-10">
       <div className="mx-auto max-w-5xl">
         <header className="grid items-center gap-8 md:grid-cols-[1fr_min(42%,18rem)] md:gap-10">
           <div className="pin-dash-animate min-w-0">
-            <p className="pin-dash-animate pin-dash-animate-d1 mb-3 inline-flex items-center gap-2 rounded-full border border-teal-200/60 bg-pin-teal-soft/90 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-pin-accent shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-teal-800/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:shadow-teal-900/40">
+            <p className="pin-dash-animate pin-dash-animate-d1 mb-5 inline-flex items-center gap-2 rounded-full border border-teal-200/60 bg-pin-teal-soft/90 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-pin-accent shadow-sm transition-shadow duration-200 hover:shadow-md dark:border-teal-800/50 dark:bg-teal-950/40 dark:text-teal-300 dark:hover:shadow-teal-900/40 md:mb-6">
               <span className="relative flex h-2 w-2" aria-hidden>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pin-accent opacity-40 motion-reduce:animate-none dark:opacity-50" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-pin-accent" />
