@@ -26,7 +26,7 @@
   position: absolute;
   left: 57%;
   top: 44%;
-  width: 36%;
+  width: 18%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 9999px;
@@ -56,6 +56,7 @@
   position: relative;
   z-index: 1;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 .prologue-logo-period {

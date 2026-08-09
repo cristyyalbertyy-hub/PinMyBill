@@ -11,9 +11,9 @@ type Particle = {
   orange: boolean;
 };
 
-/** Matches `.prologue-logo-wrap` max width (22rem) × orb width (36%). */
+/** Matches `.prologue-logo-wrap` max width (22rem) × orb width (18%). */
 const LOGO_MAX_PX = 22 * 16;
-const ORB_WIDTH_RATIO = 0.36;
+const ORB_WIDTH_RATIO = 0.18;
 
 function logoOrbRadius(viewportWidth: number): number {
   const logoWidth = Math.min(viewportWidth, LOGO_MAX_PX);
