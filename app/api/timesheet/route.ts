@@ -76,9 +76,13 @@ export async function POST(request: Request) {
     const breakMinutes = Math.max(0, Number(body.breakMinutes) || 0);
     const rate = Number(body.rate);
     const totalHours = computeTotalHours(startTime, endTime, breakMinutes);
+    const currency = body.currency?.trim().toUpperCase() ?? "";
 
     if (!Number.isFinite(rate) || rate < 0) {
       return NextResponse.json({ error: "Rate invalida." }, { status: 400 });
+    }
+    if (!currency) {
+      return NextResponse.json({ error: "Moeda obrigatoria." }, { status: 400 });
     }
     if (totalHours <= 0) {
       return NextResponse.json({ error: "Horas invalidas." }, { status: 400 });
@@ -94,7 +98,7 @@ export async function POST(request: Request) {
         breakMinutes,
         days: totalHours,
         rate,
-        currency: body.currency?.trim().toUpperCase() || "EUR",
+        currency,
       },
     });
     return NextResponse.json(formatRow(created));

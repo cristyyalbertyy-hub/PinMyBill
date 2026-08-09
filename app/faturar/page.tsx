@@ -29,14 +29,21 @@ type BillerProfile = {
 type PeriodMode = "all" | "range";
 type LineMode = "simple" | "detailed";
 
-type CustomInvoiceLine = {
+type InvoiceFormLine = {
   id: string;
+  visible: boolean;
   description: string;
   amount: string;
+  autoAmount?: boolean;
 };
 
-function newCustomLine(): CustomInvoiceLine {
-  return { id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, description: "", amount: "" };
+function newFormLine(): InvoiceFormLine {
+  return {
+    id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    visible: true,
+    description: "",
+    amount: "",
+  };
 }
 
 const EMPTY_BANK: InvoiceBankDetails = {
@@ -123,8 +130,7 @@ function FaturarPageContent() {
   const [terms, setTerms] = useState("Due on Receipt");
   const [projectName, setProjectName] = useState("");
   const [lineMode, setLineMode] = useState<LineMode>("simple");
-  const [expenseLineLabel, setExpenseLineLabel] = useState("expenses");
-  const [customLines, setCustomLines] = useState<CustomInvoiceLine[]>([]);
+  const [formLines, setFormLines] = useState<InvoiceFormLine[]>([]);
 
   const [toName, setToName] = useState("");
   const [toAddress, setToAddress] = useState("");
@@ -192,13 +198,6 @@ function FaturarPageContent() {
           amount: item.amount,
         });
       }
-    } else if (expenseTotal > 0) {
-      items.push({
-        description: expenseLineLabel.trim() || t("invoice.expensesLine"),
-        duration: 1,
-        rate: expenseTotal,
-        amount: expenseTotal,
-      });
     }
 
     if (timesheetImport) {
@@ -207,25 +206,22 @@ function FaturarPageContent() {
       }
     }
 
-    for (const row of customLines) {
-      const amt = parseAmount(row.amount);
+    for (const row of formLines) {
+      if (!row.visible) continue;
+      const amt = row.autoAmount ? expenseTotal : parseAmount(row.amount);
       const desc = row.description.trim();
-      if (amt > 0 && desc) {
-        items.push({ description: desc, duration: 1, rate: amt, amount: amt });
-      }
+      if (amt <= 0) continue;
+      if (!desc && !row.autoAmount) continue;
+      items.push({
+        description: desc || t("invoice.expensesLine"),
+        duration: 1,
+        rate: amt,
+        amount: amt,
+      });
     }
 
     return items;
-  }, [
-    currency,
-    customLines,
-    clientExpenses,
-    expenseLineLabel,
-    expenseTotal,
-    lineMode,
-    t,
-    timesheetImport,
-  ]);
+  }, [currency, clientExpenses, expenseTotal, formLines, lineMode, t, timesheetImport]);
 
   const subtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + item.amount, 0),
@@ -498,6 +494,32 @@ function FaturarPageContent() {
     if (totalManual) return;
     setTotalAmount(computedTotal.toFixed(3));
   }, [computedTotal, totalManual]);
+
+  useEffect(() => {
+    if (lineMode !== "simple" || expenseTotal <= 0) {
+      setFormLines((prev) => prev.filter((line) => !line.autoAmount));
+      return;
+    }
+
+    setFormLines((prev) => {
+      const expenseLine = prev.find((line) => line.autoAmount);
+      if (expenseLine) {
+        return prev.map((line) =>
+          line.autoAmount ? { ...line, amount: expenseTotal.toFixed(3) } : line,
+        );
+      }
+      return [
+        {
+          id: "expense-auto",
+          visible: true,
+          description: "expenses",
+          amount: expenseTotal.toFixed(3),
+          autoAmount: true,
+        },
+        ...prev,
+      ];
+    });
+  }, [expenseTotal, lineMode]);
 
   useEffect(() => {
     try {
@@ -785,23 +807,88 @@ function FaturarPageContent() {
                     {t("invoice.linesHeading")}
                   </p>
 
-                  {lineMode === "simple" && expenseTotal > 0 ? (
-                    <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted sm:col-span-2">
-                      {t("invoice.expensesLine")}
-                      <div className="flex gap-2">
-                        <input
-                          value={expenseLineLabel}
-                          onChange={(e) => setExpenseLineLabel(e.target.value)}
-                          className="pin-field min-w-0 flex-1"
-                          placeholder={t("invoice.itemDescriptionDefault")}
-                        />
-                        <input
-                          readOnly
-                          value={expenseTotal.toFixed(3)}
-                          className="pin-field w-28 bg-stone-100 text-right dark:bg-stone-800"
-                        />
+                  {formLines.length > 0 ? (
+                    <div className="sm:col-span-2 grid gap-2">
+                      <div className="hidden gap-2 px-1 text-xs font-medium uppercase tracking-wide text-pin-soft sm:grid sm:grid-cols-[2.5rem_minmax(0,1fr)_7rem]">
+                        <span>{t("invoice.lineVisibleCol")}</span>
+                        <span>{t("invoice.customLineDescription")}</span>
+                        <span className="text-right">{t("invoice.amountCol")}</span>
                       </div>
-                    </label>
+                      {formLines.map((row) => (
+                        <div
+                          key={row.id}
+                          className="grid grid-cols-[2.5rem_minmax(0,1fr)_7rem_auto] items-center gap-2"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormLines((prev) =>
+                                prev.map((line) =>
+                                  line.id === row.id ? { ...line, visible: !line.visible } : line,
+                                ),
+                              )
+                            }
+                            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ring-1 transition active:scale-95 ${
+                              row.visible
+                                ? "bg-pin-teal-soft text-pin-accent ring-teal-200 dark:bg-teal-950/50 dark:ring-teal-800"
+                                : "bg-red-50 text-red-600 ring-red-200 dark:bg-red-950/40 dark:ring-red-900"
+                            }`}
+                            aria-label={
+                              row.visible ? t("invoice.lineHideFromInvoice") : t("invoice.lineShowOnInvoice")
+                            }
+                            title={
+                              row.visible ? t("invoice.lineHideFromInvoice") : t("invoice.lineShowOnInvoice")
+                            }
+                          >
+                            {row.visible ? "✓" : "✕"}
+                          </button>
+                          <input
+                            value={row.description}
+                            onChange={(e) =>
+                              setFormLines((prev) =>
+                                prev.map((line) =>
+                                  line.id === row.id ? { ...line, description: e.target.value } : line,
+                                ),
+                              )
+                            }
+                            className="pin-field min-w-0"
+                            placeholder={t("invoice.itemDescriptionDefault")}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            readOnly={row.autoAmount}
+                            value={row.amount}
+                            onChange={(e) =>
+                              setFormLines((prev) =>
+                                prev.map((line) =>
+                                  line.id === row.id ? { ...line, amount: e.target.value } : line,
+                                ),
+                              )
+                            }
+                            className={`pin-field w-full text-right ${
+                              row.autoAmount ? "bg-stone-100 dark:bg-stone-800" : ""
+                            }`}
+                            placeholder="0"
+                          />
+                          {row.autoAmount ? (
+                            <span className="w-8" aria-hidden />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormLines((prev) => prev.filter((line) => line.id !== row.id))
+                              }
+                              className="inline-flex h-10 w-8 shrink-0 items-center justify-center rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              aria-label={t("common.remove")}
+                            >
+                              🗑
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   ) : null}
 
                   {timesheetImport ? (
@@ -814,48 +901,10 @@ function FaturarPageContent() {
                     </div>
                   ) : null}
 
-                  {customLines.map((row) => (
-                    <div key={row.id} className="flex gap-2 sm:col-span-2">
-                      <input
-                        value={row.description}
-                        onChange={(e) =>
-                          setCustomLines((prev) =>
-                            prev.map((r) =>
-                              r.id === row.id ? { ...r, description: e.target.value } : r,
-                            ),
-                          )
-                        }
-                        className="pin-field min-w-0 flex-1"
-                        placeholder={t("invoice.customLineDescription")}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        value={row.amount}
-                        onChange={(e) =>
-                          setCustomLines((prev) =>
-                            prev.map((r) => (r.id === row.id ? { ...r, amount: e.target.value } : r)),
-                          )
-                        }
-                        className="pin-field w-28"
-                        placeholder="0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCustomLines((prev) => prev.filter((r) => r.id !== row.id))}
-                        className="rounded-xl px-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        aria-label={t("common.remove")}
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  ))}
-
                   <div className="sm:col-span-2">
                     <button
                       type="button"
-                      onClick={() => setCustomLines((prev) => [...prev, newCustomLine()])}
+                      onClick={() => setFormLines((prev) => [...prev, newFormLine()])}
                       className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-pin-teal-soft text-xl font-bold text-pin-accent ring-1 ring-teal-200 transition hover:bg-teal-100 active:scale-95 dark:bg-teal-950/50 dark:ring-teal-800"
                       aria-label={t("invoice.addCustomLine")}
                       title={t("invoice.addCustomLine")}

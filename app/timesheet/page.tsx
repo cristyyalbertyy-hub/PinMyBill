@@ -9,6 +9,23 @@ import type { ClientDetail, TimesheetImportPayload, TimesheetRow } from "@/lib/p
 import { TIMESHEET_IMPORT_KEY } from "@/lib/profile-types";
 import { computeTotalHours, formatHours } from "@/lib/timesheet-utils";
 
+const STANDARD_CURRENCY_CODES = new Set(["AED", "QAR", "SAR", "USD", "EUR"]);
+const OTHER_CURRENCY_SENTINEL = "OUTRO";
+
+type CurrencyUi = { code: string; other: string };
+
+function currencyFromRaw(raw: string): CurrencyUi {
+  const upper = raw.trim().toUpperCase();
+  if (!upper) return { code: "", other: "" };
+  if (STANDARD_CURRENCY_CODES.has(upper)) return { code: upper, other: "" };
+  return { code: OTHER_CURRENCY_SENTINEL, other: upper };
+}
+
+function resolveCurrency(code: string, other: string): string {
+  if (code === OTHER_CURRENCY_SENTINEL) return other.trim().toUpperCase();
+  return code.trim().toUpperCase();
+}
+
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -23,18 +40,24 @@ function TimesheetContent() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { ready: projectReady, activeProject, projects, setActiveProject } = useProject();
+  const { ready: projectReady, activeProject, setActiveProject } = useProject();
 
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [clients, setClients] = useState<ClientDetail[]>([]);
   const [clientName, setClientName] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
-  const [currency, setCurrency] = useState("EUR");
+  const [currencyCode, setCurrencyCode] = useState("");
+  const [otherCurrency, setOtherCurrency] = useState("");
   const [rows, setRows] = useState<TimesheetRow[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const loadRows = useCallback(async (client: string) => {
+  const resolvedCurrency = useMemo(
+    () => resolveCurrency(currencyCode, otherCurrency),
+    [currencyCode, otherCurrency],
+  );
+
+  const loadRows = useCallback(async (client: string, clientRows: ClientDetail[]) => {
     if (!client) {
       setRows([]);
       return;
@@ -45,14 +68,21 @@ function TimesheetContent() {
     setRows(data);
     if (data.length > 0) {
       setHourlyRate(String(data[data.length - 1].rate));
-      setCurrency(data[data.length - 1].currency);
+      const saved = currencyFromRaw(data[data.length - 1].currency);
+      setCurrencyCode(saved.code);
+      setOtherCurrency(saved.other);
+      return;
     }
+    const project = clientRows.find((c) => c.name === client);
+    const defaults = currencyFromRaw(project?.bank?.currency ?? "");
+    setCurrencyCode(defaults.code);
+    setOtherCurrency(defaults.other);
   }, []);
 
   useEffect(() => {
     if (!projectReady) return;
-    void Promise.all([fetch("/api/clients"), fetch("/api/account/profile")])
-      .then(async ([cl, pr]) => {
+    void fetch("/api/clients")
+      .then(async (cl) => {
         if (!cl.ok) throw new Error("fetch");
         const clientRows = (await cl.json()) as ClientDetail[];
         setClients(clientRows);
@@ -66,12 +96,6 @@ function TimesheetContent() {
               ? activeName
               : clientRows[0]?.name ?? "";
         setClientName(initial);
-
-        if (pr.ok) {
-          const profile = (await pr.json()) as { bank: { currency: string } };
-          if (profile.bank.currency) setCurrency(profile.bank.currency);
-          else if (activeProject?.bank.currency) setCurrency(activeProject.bank.currency);
-        }
       })
       .catch(() => setLoadError(t("timesheet.loadError")))
       .finally(() => setReady(true));
@@ -86,8 +110,8 @@ function TimesheetContent() {
 
   useEffect(() => {
     if (!ready || !clientName) return;
-    void loadRows(clientName).catch(() => setLoadError(t("timesheet.loadError")));
-  }, [clientName, loadRows, ready, t]);
+    void loadRows(clientName, clients).catch(() => setLoadError(t("timesheet.loadError")));
+  }, [clientName, clients, loadRows, ready, t]);
 
   const rate = parseNum(hourlyRate);
 
@@ -103,7 +127,7 @@ function TimesheetContent() {
   }, [rate, rows]);
 
   async function addRow() {
-    if (!clientName.trim() || rate <= 0) return;
+    if (!clientName.trim() || rate <= 0 || !resolvedCurrency) return;
     setSaving(true);
     try {
       const res = await fetch("/api/timesheet", {
@@ -116,11 +140,11 @@ function TimesheetContent() {
           endTime: "17:00",
           breakMinutes: 60,
           rate,
-          currency: currency.trim().toUpperCase(),
+          currency: resolvedCurrency,
         }),
       });
       if (!res.ok) throw new Error("save");
-      await loadRows(clientName);
+      await loadRows(clientName, clients);
     } catch {
       globalThis.alert(t("timesheet.saveError"));
     } finally {
@@ -141,7 +165,7 @@ function TimesheetContent() {
       globalThis.alert(t("timesheet.saveError"));
       return;
     }
-    await loadRows(clientName);
+    await loadRows(clientName, clients);
   }
 
   async function removeRow(id: string) {
@@ -150,14 +174,14 @@ function TimesheetContent() {
       globalThis.alert(t("timesheet.saveError"));
       return;
     }
-    await loadRows(clientName);
+    await loadRows(clientName, clients);
   }
 
   function importToInvoice() {
-    if (rows.length === 0 || totals.grandTotal <= 0 || rate <= 0) return;
+    if (rows.length === 0 || totals.grandTotal <= 0 || rate <= 0 || !resolvedCurrency) return;
     const payload: TimesheetImportPayload = {
       clientName,
-      currency: currency.trim().toUpperCase(),
+      currency: resolvedCurrency,
       total: totals.grandTotal,
       lineItems: [
         {
@@ -231,15 +255,37 @@ function TimesheetContent() {
                   className="pin-field"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
+              <div className="flex flex-col gap-1 text-sm font-medium text-pin-muted">
                 {t("timesheet.currency")}
-                <input
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                <select
+                  value={currencyCode}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setCurrencyCode(value);
+                    if (value !== OTHER_CURRENCY_SENTINEL) {
+                      setOtherCurrency("");
+                    }
+                  }}
                   className="pin-field"
-                  maxLength={12}
-                />
-              </label>
+                >
+                  <option value="">{t("common.selectCurrency")}</option>
+                  <option value="AED">AED</option>
+                  <option value="QAR">QAR</option>
+                  <option value="SAR">SAR</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value={OTHER_CURRENCY_SENTINEL}>{t("common.other")}</option>
+                </select>
+                {currencyCode === OTHER_CURRENCY_SENTINEL ? (
+                  <input
+                    value={otherCurrency}
+                    onChange={(e) => setOtherCurrency(e.target.value.toUpperCase())}
+                    className="pin-field"
+                    placeholder={t("desp.otherCurrencyPh")}
+                    maxLength={12}
+                  />
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-5 overflow-x-auto">
@@ -341,7 +387,7 @@ function TimesheetContent() {
                       <button
                         type="button"
                         onClick={() => void addRow()}
-                        disabled={saving || !clientName || rate <= 0}
+                        disabled={saving || !clientName || rate <= 0 || !resolvedCurrency}
                         className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-pin-teal-soft text-xl font-bold text-pin-accent ring-1 ring-teal-200 transition hover:bg-teal-100 active:scale-95 disabled:opacity-50 dark:bg-teal-950/50 dark:ring-teal-800"
                         aria-label={t("timesheet.addDay")}
                         title={t("timesheet.addDay")}
@@ -362,17 +408,17 @@ function TimesheetContent() {
                     </td>
                     <td />
                   </tr>
-                  {rows.length > 0 && rate > 0 ? (
+                  {rows.length > 0 && rate > 0 && resolvedCurrency ? (
                     <tr>
                       <td colSpan={4} className="pb-2 pt-1 text-sm text-pin-muted">
-                        {formatHours(totals.totalHours)} h × {rate.toFixed(2)} {currency.trim().toUpperCase()}
+                        {formatHours(totals.totalHours)} h × {rate.toFixed(2)} {resolvedCurrency}
                       </td>
                       <td className="pb-2 pt-1 text-right">
                         <p className="text-xs font-medium uppercase tracking-wider text-pin-muted">
                           {t("timesheet.grandTotal")}
                         </p>
                         <p className="text-xl font-extrabold tabular-nums text-pin-accent">
-                          {totals.grandTotal.toFixed(2)} {currency.trim().toUpperCase()}
+                          {totals.grandTotal.toFixed(2)} {resolvedCurrency}
                         </p>
                       </td>
                       <td />
@@ -382,7 +428,7 @@ function TimesheetContent() {
               </table>
             </div>
 
-            {rows.length > 0 && rate > 0 ? (
+            {rows.length > 0 && rate > 0 && resolvedCurrency ? (
               <div className="mt-5 flex justify-end border-t border-stone-200/80 pt-5 dark:border-stone-700">
                 <button
                   type="button"
