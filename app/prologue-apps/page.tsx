@@ -61,6 +61,7 @@ export default function PrologueAppsPage() {
   }
 
   const pinTags = ["receipts", "timesheet", "invoice", "i18n"] as const;
+  const dotTags = ["puzzle", "focus", "unwind"] as const;
 
   return (
     <div className="prologue-root relative overflow-x-hidden pb-16">
@@ -120,7 +121,7 @@ export default function PrologueAppsPage() {
             {t("hero.subtitle", { apps: t("hero.appsLabel") })}
           </p>
           <p className="prologue-counter mt-8 text-3xl font-black md:text-5xl">
-            1 <span className="text-xl font-bold text-stone-500 md:text-2xl">{t("hero.available")}</span>{" "}
+            2 <span className="text-xl font-bold text-stone-500 md:text-2xl">{t("hero.available")}</span>{" "}
             · ∞{" "}
             <span className="text-xl font-bold text-stone-500 md:text-2xl">{t("hero.incoming")}</span>
           </p>
@@ -170,6 +171,36 @@ export default function PrologueAppsPage() {
                     {t("pinmybill.dashboard")}
                   </Link>
                 )}
+              </div>
+            </div>
+          </article>
+          <article className="prologue-card prologue-card-live mt-4" onMouseMove={cardGlow}>
+            <div className="prologue-card-inner relative grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-8">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-orange-500/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-orange-300">
+                    Live
+                  </span>
+                  <span className="text-2xl" aria-hidden>
+                    🧩
+                  </span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-white">Dot Connect Five</h3>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-stone-400 md:text-base">
+                  {t("dotfive.desc")}
+                </p>
+                <ul className="mt-4 flex flex-wrap gap-2 text-xs text-stone-500">
+                  {dotTags.map((tag) => (
+                    <li key={tag} className="rounded-lg bg-white/5 px-2 py-1">
+                      {t(`dotfive.tag.${tag}`)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row md:flex-col">
+                <a href="/dot-connect-five" className="prologue-btn-primary">
+                  {t("dotfive.play")}
+                </a>
               </div>
             </div>
           </article>

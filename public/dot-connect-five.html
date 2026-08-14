@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dot Connect Five</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --card-bg: rgba(255, 252, 250, 0.93);
+      --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      --text-main: #333;
+      --text-muted: #555;
+    }
+    body.theme-night {
+      --card-bg: rgba(30, 35, 48, 0.92);
+      --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --text-main: #e8eaef;
+      --text-muted: #b0b5c0;
+    }
+    body.theme-night p:not(.onboarding-hint) { color: var(--text-muted); }
+    body.theme-night .beta-version { color: #7a8299; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: var(--text-main);
+      /* Tema Flor: amendoeiras em flor */
+      background-color: #e8eef5;
+      background-image:
+        linear-gradient(rgba(255, 252, 250, 0.82), rgba(255, 252, 250, 0.88)),
+        url("https://images.unsplash.com/photo-1743244317109-b17bdd7ec5d0?auto=format&fit=crop&w=1920&q=80");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    body.theme-night {
+      background-color: #0f1118;
+      background-image:
+        linear-gradient(rgba(15, 17, 24, 0.92), rgba(20, 24, 35, 0.94)),
+        url("https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=1920&q=80");
+    }
+
+    .game-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: var(--card-shadow);
+      padding: 20px 24px 24px;
+      max-width: calc(100vw - 32px);
+      margin: 16px;
+      backdrop-filter: blur(8px);
+    }
+    @media (max-width: 480px) {
+      .game-card {
+        padding: 12px 14px 16px;
+        margin: 10px;
+        max-height: none;
+      }
+      .game-toolbar { margin-bottom: 10px; }
+      h1 { font-size: 1.35rem; }
+      p { font-size: 14px; }
+    }
+    .game-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    body.theme-night .game-toolbar { border-bottom-color: rgba(255,255,255,0.08); }
+    .game-toolbar button,
+    .game-toolbar label {
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .game-toolbar button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      background: #1976d2;
+      color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    }
+    .game-toolbar button:hover { background: #1565c0; }
+    #btnHelp.help-on {
+      background: #2e7d32;
+    }
+    #btnHelp.help-on:hover { background: #1b5e20; }
+    .game-toolbar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+    .stats-row {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .stats-row strong { color: var(--text-main); }
+    .onboarding-hint {
+      background: linear-gradient(135deg, #e3f2fd 0%, #fff8e1 100%);
+      border: 1px solid #90caf9;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #1565c0;
+      display: none;
+    }
+    .onboarding-hint.visible { display: block; }
+    body.theme-night .onboarding-hint {
+      background: linear-gradient(135deg, #1e3a5f 0%, #3e2723 100%);
+      border-color: #42a5f5;
+      color: #90caf9;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-family: 'Fredoka', Arial, sans-serif;
+      font-weight: 600;
+      font-size: 1.75rem;
+      color: var(--text-main);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin-top: 0;
+      color: #555;
+    }
+    .beta-version {
+      margin-top: -4px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #999;
+      letter-spacing: 0.05em;
+    }
+
+    canvas {
+      background: #fff;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    body.theme-night canvas {
+      background: #1a1d28;
+      border-color: #3d4252;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .counter-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    /* Mesmo “tamanho” visual que Restart: padding, fonte e altura mínima */
+    .counter-box {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 8px 14px;
+      min-height: 36px;
+      box-sizing: border-box;
+      background: #1976d2;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .red-dot-counter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: inherit;
+      font-weight: inherit;
+      color: #fff;
+    }
+    .red-dot-counter .counter-label {
+      font-size: inherit;
+      font-weight: inherit;
+      color: #fff;
+    }
+    .red-dot-counter .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d32f2f;
+    }
+    .btn-restart {
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 8px 14px;
+      min-height: 36px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.2;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #1976d2;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .btn-restart:hover {
+      background: #1565c0;
+    }
+    .btn-undo {
+      left: 72px;
+    }
+    .btn-undo:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-undo:disabled:hover {
+      background: #1976d2;
+    }
+    .pick-status {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1565c0;
+      margin-bottom: 10px;
+    }
+    .pick-status[hidden] { display: none !important; }
+    body.theme-night .pick-status { color: #90caf9; }
+    .pick-status.error { color: #c62828; }
+    body.theme-night .pick-status.error { color: #ef9a9a; }
+
+    .game-over {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 48px;
+      bottom: 8px;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: rgba(255, 252, 250, 0.92);
+      border-radius: 12px;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+    .game-over[hidden] { display: none !important; }
+    body.theme-night .game-over {
+      background: rgba(20, 24, 35, 0.92);
+    }
+    .game-over-title {
+      margin: 0 0 8px;
+      font-family: 'Fredoka', Arial, sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    body.theme-night .game-over-title { color: var(--text-main); }
+    .game-over-score,
+    .game-over-best {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+    .game-over-score strong,
+    .game-over-best.record {
+      color: #2e7d32;
+      font-size: 1.15em;
+    }
+    body.theme-night .game-over-score strong,
+    body.theme-night .game-over-best.record { color: #81c784; }
+    .game-over button {
+      margin-top: 12px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: #1976d2;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .game-over button:hover { background: #1565c0; }
+  </style>
+</head>
+<body>
+  <div class="game-card">
+    <div class="game-toolbar">
+      <button type="button" id="btnTheme" title="Switch theme">Theme: Flower</button>
+      <label><input type="checkbox" id="chkSound" checked /> Sound</label>
+      <button type="button" id="btnRestart" title="Restart game">Restart</button>
+    </div>
+    <h1>Dot Connect Five</h1>
+    <p class="beta-version">Beta version 4</p>
+    <p>Place a red dot to complete a line of five dots.<br>Lines may be horizontal, vertical, or diagonal.</p>
+    <div class="stats-row" id="statsRow">
+      Lines this game: <strong id="linesThisGame">0</strong>
+      &nbsp;·&nbsp; Best: <strong id="linesBest">0</strong>
+    </div>
+    <div class="pick-status" id="pickStatus" hidden>Tap the other dots in the line (1/5). Undo cancels.</div>
+    <div class="onboarding-hint visible" id="onboardingHint">
+      Tap a valid cell (in a cross with the blue dots) to place the first red dot.
+      <button type="button" id="btnDismissHint" style="margin-left:8px;padding:4px 8px;font-size:12px;cursor:pointer;border-radius:6px;border:1px solid #90caf9;background:#fff;">OK</button>
+    </div>
+
+  <div class="counter-wrap">
+    <button type="button" class="btn-restart" id="btnHelp" title="Show possible cells">Help</button>
+    <button type="button" class="btn-restart btn-undo" id="btnUndo" disabled title="Undo last move">Undo</button>
+    <div class="counter-box">
+      <div class="red-dot-counter" id="redDotCounter" aria-hidden="true">
+        <span class="counter-label">Moves</span>
+        <span class="dot"></span>
+        <span id="redDotCount">0</span>
+      </div>
+    </div>
+    <div id="gameOver" class="game-over" hidden>
+      <p class="game-over-title">Game over</p>
+      <p class="game-over-score">Lines: <strong id="gameOverLines">0</strong></p>
+      <p class="game-over-best" id="gameOverBestLine">Best: 0</p>
+      <button type="button" id="btnPlayAgain">Play again</button>
+    </div>
+    <canvas id="board"></canvas>
+  </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+
+    // Grelha em retângulo vertical, mais pequena para caber no telemóvel
+    const rows = 32;
+    const cols = 24;
+    const cellSize = 10;
+    const margin = 12;
+
+    // true = cruz 10x10 no canto; false = cruz centrada na grelha
+    const CROSS_10X10_AT_TOPLEFT = false;
+
+    // ajustar o tamanho do canvas à grelha
+    canvas.width = margin * 2 + (cols - 1) * cellSize;
+    canvas.height = margin * 2 + (rows - 1) * cellSize;
+
+    const LS_THEME = 'dcf_theme';
+    const LS_SOUND = 'dcf_sound';
+    const LS_HINT = 'dcf_onboarding_dismissed';
+    const LS_BEST_LINES = 'dcf_best_lines';
+    let linePulseUntil = 0;
+    let gameOverOpen = false;
+    let helpHintsOn = false;
+    let recordAtStart = parseInt(localStorage.getItem(LS_BEST_LINES) || '0', 10);
+    let audioCtx = null;
+    function getAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      return audioCtx;
+    }
+    function soundEnabled() {
+      const chk = document.getElementById('chkSound');
+      return chk && chk.checked;
+    }
+    function playTone(freq, duration, type = 'sine', vol = 0.08) {
+      if (!soundEnabled()) return;
+      try {
+        const ctx = getAudio();
+        if (ctx.state === 'suspended') ctx.resume();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.value = vol;
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        o.stop(ctx.currentTime + duration + 0.05);
+      } catch (_) {}
+    }
+    function playPlaceDot() { playTone(520, 0.06, 'sine', 0.06); }
+    function playLineComplete() {
+      if (!soundEnabled()) return;
+      playTone(392, 0.08, 'sine', 0.07);
+      setTimeout(() => playTone(523, 0.12, 'sine', 0.08), 70);
+      setTimeout(() => playTone(659, 0.15, 'sine', 0.07), 160);
+    }
+    function playGameOver() {
+      if (!soundEnabled()) return;
+      playTone(523, 0.12, 'sine', 0.07);
+      setTimeout(() => playTone(392, 0.16, 'sine', 0.07), 130);
+      setTimeout(() => playTone(330, 0.28, 'sine', 0.08), 280);
+    }
+    function vibrateShort() {
+      if (navigator.vibrate) navigator.vibrate(25);
+    }
+    function vibrateLine() {
+      if (navigator.vibrate) navigator.vibrate([30, 40, 50]);
+    }
+    function totalLinesCount() {
+      return yellowLines.length + yellowLinesVert.length + yellowLinesDiagMain.length + yellowLinesDiagAnti.length;
+    }
+    function updateStats() {
+      const n = totalLinesCount();
+      const elThis = document.getElementById('linesThisGame');
+      const elBest = document.getElementById('linesBest');
+      if (elThis) elThis.textContent = n;
+      let best = parseInt(localStorage.getItem(LS_BEST_LINES) || '0', 10);
+      if (n > best) {
+        best = n;
+        localStorage.setItem(LS_BEST_LINES, String(best));
+      }
+      if (elBest) elBest.textContent = best;
+    }
+    function applyTheme(theme) {
+      document.body.classList.toggle('theme-night', theme === 'night');
+      const btn = document.getElementById('btnTheme');
+      if (btn) btn.textContent = theme === 'night' ? 'Theme: Night' : 'Theme: Flower';
+      localStorage.setItem(LS_THEME, theme);
+    }
+    (function initTheme() {
+      const t = localStorage.getItem(LS_THEME) || 'flower';
+      applyTheme(t === 'night' ? 'night' : 'flower');
+    })();
+    document.getElementById('btnTheme').addEventListener('click', () => {
+      const night = !document.body.classList.contains('theme-night');
+      applyTheme(night ? 'night' : 'flower');
+      draw();
+    });
+    document.getElementById('chkSound').checked = localStorage.getItem(LS_SOUND) !== '0';
+    document.getElementById('chkSound').addEventListener('change', (e) => {
+      localStorage.setItem(LS_SOUND, e.target.checked ? '1' : '0');
+    });
+    function showValidCells() {
+      return helpHintsOn;
+    }
+    function hideHelpHints() {
+      helpHintsOn = false;
+      const btn = document.getElementById('btnHelp');
+      if (btn) btn.classList.remove('help-on');
+    }
+    function setHelpHints(on) {
+      helpHintsOn = !!on;
+      const btn = document.getElementById('btnHelp');
+      if (btn) btn.classList.toggle('help-on', helpHintsOn);
+      draw();
+    }
+    document.getElementById('btnHelp').addEventListener('click', () => {
+      setHelpHints(!helpHintsOn);
+    });
+    function dismissOnboarding() {
+      const hint = document.getElementById('onboardingHint');
+      if (hint) hint.classList.remove('visible');
+      localStorage.setItem(LS_HINT, '1');
+    }
+    if (localStorage.getItem(LS_HINT) === '1') dismissOnboarding();
+    document.getElementById('btnDismissHint').addEventListener('click', dismissOnboarding);
+    const elBestInit = document.getElementById('linesBest');
+    if (elBestInit) elBestInit.textContent = localStorage.getItem(LS_BEST_LINES) || '0';
+
+    function canvasFillColor() {
+      return document.body.classList.contains('theme-night') ? '#1a1d28' : '#ffffff';
+    }
+    function gridLineColor() {
+      return document.body.classList.contains('theme-night') ? '#4a5060' : '#8a8a8a';
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = gridLineColor();
+      ctx.lineWidth = 1;
+
+      for (let c = 0; c < cols; c++) {
+        const x = margin + c * cellSize;
+        ctx.beginPath();
+        ctx.moveTo(x, margin);
+        ctx.lineTo(x, margin + (rows - 1) * cellSize);
+        ctx.stroke();
+      }
+
+      for (let r = 0; r < rows; r++) {
+        const y = margin + r * cellSize;
+        ctx.beginPath();
+        ctx.moveTo(margin, y);
+        ctx.lineTo(margin + (cols - 1) * cellSize, y);
+        ctx.stroke();
+      }
+    }
+
+    function gridToCanvas(col, row) {
+      return {
+        x: margin + col * cellSize,
+        y: margin + row * cellSize
+      };
+    }
+
+    const dotRadius = 2.5;
+
+    function drawPoint(col, row, color = '#2f5bd3') {
+      const p = gridToCanvas(col, row);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, dotRadius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    // Encurta o segmento (ax,ay)-(bx,by) para ficar só entre os dots (não além)
+    function clipLineToDotEdges(ax, ay, bx, by) {
+      const dx = bx - ax, dy = by - ay;
+      const len = Math.hypot(dx, dy);
+      if (len < dotRadius * 2) return { x1: ax, y1: ay, x2: bx, y2: by };
+      const ux = dx / len, uy = dy / len;
+      return {
+        x1: ax + ux * dotRadius,
+        y1: ay + uy * dotRadius,
+        x2: bx - ux * dotRadius,
+        y2: by - uy * dotRadius
+      };
+    }
+
+    const redPoints = new Set();
+    const bluePoints = new Set();
+    // Procedimento igual para horizontais e verticais:
+    // 5 dots em sequência → linha amarela; dot livre = não está em nenhuma linha.
+    // Linhas horizontais: (row, colStart .. colStart+4)
+    const yellowLines = [];
+    // Linhas verticais: (col, rowStart .. rowStart+4)
+    const yellowLinesVert = [];
+    // Linhas diagonais: 5 pontos em diagonal. Main: (colStart+i, rowStart+i); Anti: (colStart+i, rowStart-i)
+    const yellowLinesDiagMain = [];
+    const yellowLinesDiagAnti = [];
+
+    // Cada dot tem 4 "luzes" (H, V, D45, D135). Começam ON. Quando passa uma linha desse tipo, a luz fica OFF.
+    // Diagonal 45° = \; Diagonal 135° = /
+    const lights = {};
+
+    // Undo: snapshot completo antes de cada colocação válida
+    const undoStack = [];
+    const UNDO_MAX = 120;
+    function takeSnapshot() {
+      return {
+        red: Array.from(redPoints),
+        yH: yellowLines.map((s) => ({ row: s.row, colStart: s.colStart })),
+        yV: yellowLinesVert.map((s) => ({ col: s.col, rowStart: s.rowStart })),
+        yDM: yellowLinesDiagMain.map((s) => ({ colStart: s.colStart, rowStart: s.rowStart })),
+        yDA: yellowLinesDiagAnti.map((s) => ({ colStart: s.colStart, rowStart: s.rowStart })),
+        lights: JSON.parse(JSON.stringify(lights))
+      };
+    }
+    function restoreSnapshot(s) {
+      redPoints.clear();
+      for (const k of s.red) redPoints.add(k);
+      yellowLines.length = 0;
+      yellowLines.push(...s.yH);
+      yellowLinesVert.length = 0;
+      yellowLinesVert.push(...s.yV);
+      yellowLinesDiagMain.length = 0;
+      yellowLinesDiagMain.push(...s.yDM);
+      yellowLinesDiagAnti.length = 0;
+      yellowLinesDiagAnti.push(...s.yDA);
+      for (const k of Object.keys(lights)) delete lights[k];
+      for (const k of Object.keys(s.lights)) {
+        lights[k] = { ...s.lights[k] };
+      }
+    }
+    function pushUndoSnapshot() {
+      if (undoStack.length >= UNDO_MAX) undoStack.shift();
+      undoStack.push(takeSnapshot());
+      const btn = document.getElementById('btnUndo');
+      if (btn) btn.disabled = false;
+    }
+    function clearUndoStack() {
+      undoStack.length = 0;
+      const btn = document.getElementById('btnUndo');
+      if (btn) btn.disabled = true;
+    }
+    function undoLastMove() {
+      if (!undoStack.length) return;
+      linePulseUntil = 0;
+      hideGameOver();
+      restoreSnapshot(undoStack.pop());
+      if (!undoStack.length) {
+        const btn = document.getElementById('btnUndo');
+        if (btn) btn.disabled = true;
+      }
+      updateRedDotCounter();
+      updateStats();
+      checkGameOver();
+      draw();
+    }
+
+    function getLightH(col, row) {
+      const key = `${col},${row}`;
+      return lights[key]?.h !== false;
+    }
+    function getLightV(col, row) {
+      const key = `${col},${row}`;
+      return lights[key]?.v !== false;
+    }
+    function getLightD45(col, row) {
+      const key = `${col},${row}`;
+      return lights[key]?.d45 !== false;
+    }
+    function getLightD135(col, row) {
+      const key = `${col},${row}`;
+      return lights[key]?.d135 !== false;
+    }
+    function setLightOffH(col, row) {
+      const key = `${col},${row}`;
+      if (!lights[key]) lights[key] = { h: true, v: true, d45: true, d135: true };
+      lights[key].h = false;
+    }
+    function setLightOffV(col, row) {
+      const key = `${col},${row}`;
+      if (!lights[key]) lights[key] = { h: true, v: true, d45: true, d135: true };
+      lights[key].v = false;
+    }
+    function setLightOffD45(col, row) {
+      const key = `${col},${row}`;
+      if (!lights[key]) lights[key] = { h: true, v: true, d45: true, d135: true };
+      lights[key].d45 = false;
+    }
+    function setLightOffD135(col, row) {
+      const key = `${col},${row}`;
+      if (!lights[key]) lights[key] = { h: true, v: true, d45: true, d135: true };
+      lights[key].d135 = false;
+    }
+    function turnLightOnHIfNoSegment(col, row) {
+      const stillOn = yellowLines.some((l) => l.row === row && col >= l.colStart && col <= l.colStart + 4);
+      if (!stillOn) {
+        const key = `${col},${row}`;
+        if (lights[key]) lights[key].h = true;
+      }
+    }
+    function turnLightOnVIfNoSegment(col, row) {
+      const stillOn = yellowLinesVert.some((l) => l.col === col && row >= l.rowStart && row <= l.rowStart + 4);
+      if (!stillOn) {
+        const key = `${col},${row}`;
+        if (lights[key]) lights[key].v = true;
+      }
+    }
+    function turnLightOnD45IfNoSegment(col, row) {
+      const stillOn = yellowLinesDiagMain.some((l) => {
+        const dc = col - l.colStart, dr = row - l.rowStart;
+        return dc === dr && dc >= 0 && dc <= 4;
+      });
+      if (!stillOn) {
+        const key = `${col},${row}`;
+        if (lights[key]) lights[key].d45 = true;
+      }
+    }
+    function turnLightOnD135IfNoSegment(col, row) {
+      const stillOn = yellowLinesDiagAnti.some((l) => {
+        const dc = col - l.colStart, dr = l.rowStart - row;
+        return dc === dr && dc >= 0 && dc <= 4;
+      });
+      if (!stillOn) {
+        const key = `${col},${row}`;
+        if (lights[key]) lights[key].d135 = true;
+      }
+    }
+
+    function isBlue(col, row) {
+      return bluePoints.has(`${col},${row}`);
+    }
+
+    function isRed(col, row) {
+      return redPoints.has(`${col},${row}`);
+    }
+
+    function isOccupied(col, row) {
+      return isBlue(col, row) || isRed(col, row);
+    }
+
+    function isInGrid(col, row) {
+      return col >= 0 && col < cols && row >= 0 && row < rows;
+    }
+
+    // Uma linha pode ser horizontal ou vertical
+    function isOnHorizontalLine(col, row) {
+      return yellowLines.some(
+        (l) => l.row === row && col >= l.colStart && col <= l.colStart + 4
+      );
+    }
+    function isOnVerticalLine(col, row) {
+      return yellowLinesVert.some(
+        (l) => l.col === col && row >= l.rowStart && row <= l.rowStart + 4
+      );
+    }
+    function isOnDiagonalLine(col, row) {
+      const onMain = yellowLinesDiagMain.some(
+        (l) => {
+          const dc = col - l.colStart;
+          const dr = row - l.rowStart;
+          return dc === dr && dc >= 0 && dc <= 4;
+        }
+      );
+      const onAnti = yellowLinesDiagAnti.some(
+        (l) => {
+          const dc = col - l.colStart;
+          const dr = l.rowStart - row;
+          return dc === dr && dc >= 0 && dc <= 4;
+        }
+      );
+      return onMain || onAnti;
+    }
+    function isOnLine(col, row) {
+      return isOnHorizontalLine(col, row) || isOnVerticalLine(col, row) || isOnDiagonalLine(col, row);
+    }
+
+    // Dot disponível para um tipo de linha = luz desse tipo ON (nenhuma linha desse tipo passou ainda)
+    // isDisponivel = as 4 luzes OFF. isLivre = pelo menos uma luz ON.
+    function isDisponivel(col, row) {
+      const key = `${col},${row}`;
+      return lights[key] && lights[key].h === false && lights[key].v === false && lights[key].d45 === false && lights[key].d135 === false;
+    }
+    function isLivre(col, row) {
+      return getLightH(col, row) || getLightV(col, row) || getLightD45(col, row) || getLightD135(col, row);
+    }
+
+    // Quatro orientações: horizontal, vertical, diagonal 45° (\), diagonal 135° (/)
+    const ORIENTATIONS = [
+      { dx: 1, dy: 0, light: 'H' },    // horizontal
+      { dx: 0, dy: 1, light: 'V' },    // vertical
+      { dx: 1, dy: 1, light: 'D45' },   // diagonal 45° "\"
+      { dx: 1, dy: -1, light: 'D135' }, // diagonal 135° "/"
+    ];
+
+    function getLightForOrientation(col, row, ori) {
+      if (ori.light === 'H') return getLightH(col, row);
+      if (ori.light === 'V') return getLightV(col, row);
+      if (ori.light === 'D45') return getLightD45(col, row);
+      if (ori.light === 'D135') return getLightD135(col, row);
+      return true;
+    }
+
+    // Returns true if placing at (c, r) completes a line of 5 in direction (dx, dy).
+    // Checks both "4 points before (c,r)" and "4 points after (c,r)" so the new point can be at either end.
+    function canCompleteLineInDirection(c, r, dx, dy, getLight) {
+      return canCompleteLineWith4Before(c, r, dx, dy, getLight) || canCompleteLineWith4After(c, r, dx, dy, getLight);
+    }
+    // Apenas "4 pontos antes" (ex.: 4 à esquerda) → linha que termina em (c,r).
+    function canCompleteLineWith4Before(c, r, dx, dy, getLight) {
+      for (let i = 1; i <= 4; i++) {
+        const cc = c - i * dx, rr = r - i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      return true;
+    }
+    // Apenas "4 pontos depois" (ex.: 4 à direita) → linha que começa em (c,r).
+    function canCompleteLineWith4After(c, r, dx, dy, getLight) {
+      for (let i = 1; i <= 4; i++) {
+        const cc = c + i * dx, rr = r + i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      return true;
+    }
+    // Fase 3: +x+++ (1 antes, 3 depois) → segmento começa em (c-dx, r-dy).
+    function canCompleteLineWith1Before3After(c, r, dx, dy, getLight) {
+      const cc0 = c - dx, rr0 = r - dy;
+      if (cc0 < 0 || cc0 >= cols || rr0 < 0 || rr0 >= rows) return false;
+      if (!isOccupied(cc0, rr0) || !getLight(cc0, rr0)) return false;
+      for (let i = 1; i <= 3; i++) {
+        const cc = c + i * dx, rr = r + i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      return true;
+    }
+    // Fase 3: +++x+ (3 antes, 1 depois) → segmento começa em (c-3dx, r-3dy).
+    function canCompleteLineWith3Before1After(c, r, dx, dy, getLight) {
+      for (let i = 1; i <= 3; i++) {
+        const cc = c - i * dx, rr = r - i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      const cc4 = c + dx, rr4 = r + dy;
+      if (cc4 < 0 || cc4 >= cols || rr4 < 0 || rr4 >= rows) return false;
+      if (!isOccupied(cc4, rr4) || !getLight(cc4, rr4)) return false;
+      return true;
+    }
+    // ++x++ (2 antes, 2 depois) → segmento começa em (c-2dx, r-2dy).
+    function canCompleteLineWith2Before2After(c, r, dx, dy, getLight) {
+      for (let i = 1; i <= 2; i++) {
+        const cc = c - i * dx, rr = r - i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      for (let i = 1; i <= 2; i++) {
+        const cc = c + i * dx, rr = r + i * dy;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLight(cc, rr)) return false;
+      }
+      return true;
+    }
+
+    // Diagonal center: 2 dots one side, 2 the other, new point in the middle (dx, dy)
+    function canCompleteDiagonalCenter(c, r, dx, dy, getLightDiag) {
+      const positions = [{ dc: -2*dx, dr: -2*dy }, { dc: -dx, dr: -dy }, { dc: dx, dr: dy }, { dc: 2*dx, dr: 2*dy }];
+      for (const { dc, dr } of positions) {
+        const cc = c + dc, rr = r + dr;
+        if (cc < 0 || cc >= cols || rr < 0 || rr >= rows) return false;
+        if (!isOccupied(cc, rr) || !getLightDiag(cc, rr)) return false;
+      }
+      return true;
+    }
+
+    // Wrappers: "Left/Above" = 4 antes (dot no fim da linha); "Right/Below" = 4 depois (dot no início da linha).
+    function canCompleteHorizontalLeft(c, r) {
+      return canCompleteLineWith4Before(c, r, 1, 0, getLightH);
+    }
+    function canCompleteHorizontalRight(c, r) {
+      return canCompleteLineWith4After(c, r, 1, 0, getLightH);
+    }
+    function canCompleteVerticalAbove(c, r) {
+      return canCompleteLineWith4Before(c, r, 0, 1, getLightV);
+    }
+    function canCompleteVerticalBelow(c, r) {
+      return canCompleteLineWith4After(c, r, 0, 1, getLightV);
+    }
+    function canCompleteDiagonalMainLeft(c, r) {
+      return canCompleteLineWith4Before(c, r, 1, 1, getLightD45);
+    }
+    function canCompleteDiagonalMainRight(c, r) {
+      return canCompleteLineWith4After(c, r, 1, 1, getLightD45);
+    }
+    function canCompleteDiagonalAntiLeft(c, r) {
+      return canCompleteLineWith4Before(c, r, 1, -1, getLightD135);
+    }
+    function canCompleteDiagonalAntiRight(c, r) {
+      return canCompleteLineWith4After(c, r, 1, -1, getLightD135);
+    }
+    // Fase 3: +x+++, +++x+, ++x++ (1L3R, 3L1R, 2L2R centro)
+    function canCompleteHorizontal_1L3R(c, r) { return canCompleteLineWith1Before3After(c, r, 1, 0, getLightH); }
+    function canCompleteHorizontal_3L1R(c, r) { return canCompleteLineWith3Before1After(c, r, 1, 0, getLightH); }
+    function canCompleteHorizontalCenter(c, r) { return canCompleteLineWith2Before2After(c, r, 1, 0, getLightH); }
+    function canCompleteVertical_1L3R(c, r) { return canCompleteLineWith1Before3After(c, r, 0, 1, getLightV); }
+    function canCompleteVertical_3L1R(c, r) { return canCompleteLineWith3Before1After(c, r, 0, 1, getLightV); }
+    function canCompleteVerticalCenter(c, r) { return canCompleteLineWith2Before2After(c, r, 0, 1, getLightV); }
+    function canCompleteDiagonalMain_1L3R(c, r) { return canCompleteLineWith1Before3After(c, r, 1, 1, getLightD45); }
+    function canCompleteDiagonalMain_3L1R(c, r) { return canCompleteLineWith3Before1After(c, r, 1, 1, getLightD45); }
+    function canCompleteDiagonalAnti_1L3R(c, r) { return canCompleteLineWith1Before3After(c, r, 1, -1, getLightD135); }
+    function canCompleteDiagonalAnti_3L1R(c, r) { return canCompleteLineWith3Before1After(c, r, 1, -1, getLightD135); }
+    function canCompleteDiagonalMainCenter(c, r) {
+      return canCompleteDiagonalCenter(c, r, 1, 1, getLightD45);
+    }
+    function canCompleteDiagonalAntiCenter(c, r) {
+      return canCompleteDiagonalCenter(c, r, 1, -1, getLightD135);
+    }
+
+    // Validate new move: check sequences of 5 including (c,r) in all four orientations.
+    // A posição de colocação só tem de estar vazia; as 4 outras é que precisam da luz ON.
+    function getValidPlacements() {
+      const valid = new Set();
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!isInGrid(c, r) || isOccupied(c, r)) continue;
+          if (canCompleteHorizontalLeft(c, r) || canCompleteHorizontalRight(c, r) || canCompleteHorizontal_1L3R(c, r) || canCompleteHorizontal_3L1R(c, r) || canCompleteHorizontalCenter(c, r)) valid.add(`${c},${r}`);
+          if (canCompleteVerticalAbove(c, r) || canCompleteVerticalBelow(c, r) || canCompleteVertical_1L3R(c, r) || canCompleteVertical_3L1R(c, r) || canCompleteVerticalCenter(c, r)) valid.add(`${c},${r}`);
+          if (canCompleteDiagonalMainLeft(c, r) || canCompleteDiagonalMainRight(c, r) || canCompleteDiagonalMain_1L3R(c, r) || canCompleteDiagonalMain_3L1R(c, r) || canCompleteDiagonalMainCenter(c, r)) valid.add(`${c},${r}`);
+          if (canCompleteDiagonalAntiLeft(c, r) || canCompleteDiagonalAntiRight(c, r) || canCompleteDiagonalAnti_1L3R(c, r) || canCompleteDiagonalAnti_3L1R(c, r) || canCompleteDiagonalAntiCenter(c, r)) valid.add(`${c},${r}`);
+        }
+      }
+      return valid;
+    }
+
+    function pointsSetKey(pts) {
+      return pts.map((p) => `${p.col},${p.row}`).sort().join('|');
+    }
+
+    // Todas as linhas de 5 que incluem (c,r), já ocupado (o novo vermelho já está na grelha).
+    function findCandidateLines(c, r) {
+      const candidates = [];
+      const seen = new Set();
+      for (const ori of ORIENTATIONS) {
+        for (let k = 0; k <= 4; k++) {
+          const startC = c - k * ori.dx;
+          const startR = r - k * ori.dy;
+          const id = `${ori.light}:${startC},${startR}`;
+          if (seen.has(id)) continue;
+          const points = [];
+          let ok = true;
+          for (let i = 0; i < 5; i++) {
+            const cc = startC + i * ori.dx;
+            const rr = startR + i * ori.dy;
+            if (!isInGrid(cc, rr) || !isOccupied(cc, rr) || !getLightForOrientation(cc, rr, ori)) {
+              ok = false;
+              break;
+            }
+            points.push({ col: cc, row: rr });
+          }
+          if (!ok) continue;
+          seen.add(id);
+          candidates.push({ ori, startC, startR, points });
+        }
+      }
+      return candidates;
+    }
+
+    function applyLine(candidate) {
+      const { ori, startC, startR } = candidate;
+      if (ori.light === 'H') {
+        yellowLines.push({ row: startR, colStart: startC });
+        for (let i = 1; i <= 3; i++) {
+          const cc = startC + i, rr = startR;
+          if (isOccupied(cc, rr)) setLightOffH(cc, rr);
+        }
+      } else if (ori.light === 'V') {
+        yellowLinesVert.push({ col: startC, rowStart: startR });
+        for (let i = 1; i <= 3; i++) {
+          const cc = startC, rr = startR + i;
+          if (isOccupied(cc, rr)) setLightOffV(cc, rr);
+        }
+      } else if (ori.light === 'D45') {
+        yellowLinesDiagMain.push({ colStart: startC, rowStart: startR });
+        for (let i = 1; i <= 3; i++) {
+          const cc = startC + i, rr = startR + i;
+          if (isOccupied(cc, rr)) setLightOffD45(cc, rr);
+        }
+      } else if (ori.light === 'D135') {
+        yellowLinesDiagAnti.push({ colStart: startC, rowStart: startR });
+        for (let i = 1; i <= 3; i++) {
+          const cc = startC + i, rr = startR - i;
+          if (isOccupied(cc, rr)) setLightOffD135(cc, rr);
+        }
+      }
+    }
+
+    function hideGameOver() {
+      gameOverOpen = false;
+      const el = document.getElementById('gameOver');
+      if (el) el.hidden = true;
+    }
+
+    function showGameOver() {
+      if (gameOverOpen) return;
+      gameOverOpen = true;
+      const n = totalLinesCount();
+      const best = parseInt(localStorage.getItem(LS_BEST_LINES) || '0', 10);
+      const elLines = document.getElementById('gameOverLines');
+      const elBest = document.getElementById('gameOverBestLine');
+      if (elLines) elLines.textContent = n;
+      if (elBest) {
+        if (n > recordAtStart) {
+          elBest.textContent = 'New best!';
+          elBest.classList.add('record');
+        } else {
+          elBest.textContent = 'Best: ' + best;
+          elBest.classList.remove('record');
+        }
+      }
+      const el = document.getElementById('gameOver');
+      if (el) el.hidden = false;
+      playGameOver();
+      if (navigator.vibrate) navigator.vibrate([40, 60, 80]);
+    }
+
+    function checkGameOver() {
+      if (pickerState) {
+        hideGameOver();
+        return;
+      }
+      if (redPoints.size === 0) {
+        hideGameOver();
+        return;
+      }
+      if (getValidPlacements().size > 0) {
+        hideGameOver();
+        return;
+      }
+      showGameOver();
+    }
+
+    function drawValidPlacements() {
+      if (!showValidCells() || pickerState || gameOverOpen) return;
+      const valid = getValidPlacements();
+      const night = document.body.classList.contains('theme-night');
+      ctx.fillStyle = night ? 'rgba(129, 199, 132, 0.9)' : 'rgba(46, 125, 50, 0.55)';
+      for (const key of valid) {
+        const [col, row] = key.split(',').map(Number);
+        const p = gridToCanvas(col, row);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.15, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function restartGame() {
+      closePointPicker();
+      hideGameOver();
+      hideHelpHints();
+      clearUndoStack();
+      redPoints.clear();
+      linePulseUntil = 0;
+      yellowLines.length = 0;
+      yellowLinesVert.length = 0;
+      yellowLinesDiagMain.length = 0;
+      yellowLinesDiagAnti.length = 0;
+      for (const key of Object.keys(lights)) delete lights[key];
+      recordAtStart = parseInt(localStorage.getItem(LS_BEST_LINES) || '0', 10);
+      updateRedDotCounter();
+      updateStats();
+      draw();
+    }
+
+    let pickerState = null;
+
+    function setPickStatus(text, isError) {
+      const el = document.getElementById('pickStatus');
+      if (!el) return;
+      if (!pickerState) {
+        el.hidden = true;
+        el.classList.remove('error');
+        return;
+      }
+      el.hidden = false;
+      el.classList.toggle('error', !!isError);
+      el.textContent = text;
+    }
+
+    function startPointPicker(col, row, candidates) {
+      const eligible = new Set();
+      for (const cand of candidates) {
+        for (const p of cand.points) eligible.add(`${p.col},${p.row}`);
+      }
+      pickerState = {
+        newCol: col,
+        newRow: row,
+        candidates,
+        selected: [{ col, row }],
+        eligible
+      };
+      hideHelpHints();
+      setPickStatus('Tap the other dots in the line (1/5). Undo cancels.', false);
+      draw();
+    }
+
+    function closePointPicker() {
+      pickerState = null;
+      setPickStatus('', false);
+    }
+
+    function cancelPointPicker() {
+      if (!pickerState) return;
+      closePointPicker();
+      undoLastMove();
+    }
+
+    function finishPlacement(candidate) {
+      hideHelpHints();
+      const linesBefore = totalLinesCount();
+      applyLine(candidate);
+      const linesAfter = totalLinesCount();
+      if (linesAfter > linesBefore) {
+        playLineComplete();
+        vibrateLine();
+        linePulseUntil = (typeof performance !== 'undefined' && performance.now) ? performance.now() + 380 : Date.now() + 380;
+        (function anim() {
+          draw();
+          const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+          if (now < linePulseUntil) requestAnimationFrame(anim);
+        })();
+      } else {
+        playPlaceDot();
+        vibrateShort();
+      }
+      updateStats();
+      updateRedDotCounter();
+      checkGameOver();
+      if ((typeof performance === 'undefined' || !performance.now || performance.now() >= linePulseUntil)) draw();
+    }
+
+    function handlePickerClick(col, row) {
+      if (!pickerState) return;
+      const key = `${col},${row}`;
+      if (!pickerState.eligible.has(key)) {
+        setPickStatus('That dot is not part of the line. Tap a dot with an orange ring.', true);
+        return;
+      }
+      const last = pickerState.selected[pickerState.selected.length - 1];
+      const isFirst = pickerState.selected.length === 1 && last.col === col && last.row === row;
+      if (isFirst) return;
+      if (last && last.col === col && last.row === row) {
+        pickerState.selected.pop();
+        setPickStatus(`Tap the other dots in the line (${pickerState.selected.length}/5). Undo cancels.`, false);
+        draw();
+        return;
+      }
+      if (pickerState.selected.some((p) => p.col === col && p.row === row)) {
+        return;
+      }
+      pickerState.selected.push({ col, row });
+      if (pickerState.selected.length < 5) {
+        setPickStatus(`Tap the other dots in the line (${pickerState.selected.length}/5). Undo cancels.`, false);
+        draw();
+        return;
+      }
+      const chosenKey = pointsSetKey(pickerState.selected);
+      const match = pickerState.candidates.find((cand) => pointsSetKey(cand.points) === chosenKey);
+      if (!match) {
+        pickerState.selected = [{ col: pickerState.newCol, row: pickerState.newRow }];
+        setPickStatus('Those dots do not form a straight line of five. Tap the other four again.', true);
+        draw();
+        return;
+      }
+      closePointPicker();
+      finishPlacement(match);
+    }
+
+    function drawPickerOverlay() {
+      if (!pickerState) return;
+      const selectedKeys = new Set(pickerState.selected.map((p) => `${p.col},${p.row}`));
+      for (const key of pickerState.eligible) {
+        if (selectedKeys.has(key)) continue;
+        const [col, row] = key.split(',').map(Number);
+        const p = gridToCanvas(col, row);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5.2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff9800';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      pickerState.selected.forEach((pt, i) => {
+        const p = gridToCanvas(pt.col, pt.row);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6.4, 0, Math.PI * 2);
+        ctx.fillStyle = i === 0 ? '#d32f2f' : '#1976d2';
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), p.x, p.y + 0.5);
+      });
+    }
+
+    // Só desenhar segmento se os 5 pontos estiverem ocupados (evitar linhas "sem dots")
+    function segmentHorizontalHasAllDots(seg) {
+      for (let i = 0; i <= 4; i++) {
+        if (!isOccupied(seg.colStart + i, seg.row)) return false;
+      }
+      return true;
+    }
+    function segmentVerticalHasAllDots(seg) {
+      for (let i = 0; i <= 4; i++) {
+        if (!isOccupied(seg.col, seg.rowStart + i)) return false;
+      }
+      return true;
+    }
+    function segmentDiagMainHasAllDots(seg) {
+      for (let i = 0; i <= 4; i++) {
+        if (!isOccupied(seg.colStart + i, seg.rowStart + i)) return false;
+      }
+      return true;
+    }
+    function segmentDiagAntiHasAllDots(seg) {
+      for (let i = 0; i <= 4; i++) {
+        if (!isOccupied(seg.colStart + i, seg.rowStart - i)) return false;
+      }
+      return true;
+    }
+
+    // Linhas completas: tema claro = preto fino; tema noite = claro fino (contraste no canvas escuro).
+    function drawCompletedLines(pulseBoost) {
+      const night = document.body.classList.contains('theme-night');
+      const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      const pulsing = pulseBoost && now < linePulseUntil;
+      const t = pulsing ? (linePulseUntil - now) / 350 : 0;
+      const boost = pulsing ? 1 + 0.5 * Math.sin(t * Math.PI * 4) : 0;
+      const baseW = 1.5;
+      const pulseW = 2.5 + boost * 1.2;
+      if (night) {
+        ctx.strokeStyle = pulsing ? '#f5f5f5' : '#cfd4e0';
+        ctx.lineWidth = pulsing ? pulseW : baseW;
+      } else {
+        ctx.strokeStyle = pulsing ? '#000000' : '#1a1a1a';
+        ctx.lineWidth = pulsing ? pulseW : baseW;
+      }
+      ctx.lineCap = 'butt';
+      for (const seg of yellowLines) {
+        if (!segmentHorizontalHasAllDots(seg)) continue;
+        const a = gridToCanvas(seg.colStart, seg.row);
+        const b = gridToCanvas(seg.colStart + 4, seg.row);
+        const { x1, y1, x2, y2 } = clipLineToDotEdges(a.x, a.y, b.x, b.y);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      for (const seg of yellowLinesVert) {
+        if (!segmentVerticalHasAllDots(seg)) continue;
+        const a = gridToCanvas(seg.col, seg.rowStart);
+        const b = gridToCanvas(seg.col, seg.rowStart + 4);
+        const { x1, y1, x2, y2 } = clipLineToDotEdges(a.x, a.y, b.x, b.y);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      for (const seg of yellowLinesDiagMain) {
+        if (!segmentDiagMainHasAllDots(seg)) continue;
+        const a = gridToCanvas(seg.colStart, seg.rowStart);
+        const b = gridToCanvas(seg.colStart + 4, seg.rowStart + 4);
+        const { x1, y1, x2, y2 } = clipLineToDotEdges(a.x, a.y, b.x, b.y);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      for (const seg of yellowLinesDiagAnti) {
+        if (!segmentDiagAntiHasAllDots(seg)) continue;
+        const a = gridToCanvas(seg.colStart, seg.rowStart);
+        const b = gridToCanvas(seg.colStart + 4, seg.rowStart - 4);
+        const { x1, y1, x2, y2 } = clipLineToDotEdges(a.x, a.y, b.x, b.y);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    }
+
+    function drawRedPoints() {
+      for (const key of redPoints) {
+        const [col, row] = key.split(',').map(Number);
+        drawPoint(col, row, '#d32f2f');
+      }
+    }
+
+    function initBlueCross() {
+      // padrão da cruz definido para uma “célula” 12x12 (linhas/colunas 1–12)
+      const pattern = [];
+
+      // linha 1: colunas 5,6,7,8 com dots azuis
+      pattern.push({ row: 1, cols: [5, 6, 7, 8] });
+      // linhas 2 e 3: colunas 5 e 8
+      pattern.push({ row: 2, cols: [5, 8] });
+      pattern.push({ row: 3, cols: [5, 8] });
+      // linha 4: colunas 2,3,4,5,8,9,10,11
+      pattern.push({ row: 4, cols: [2, 3, 4, 5, 8, 9, 10, 11] });
+      // linhas 5 e 6: colunas 2 e 11
+      pattern.push({ row: 5, cols: [2, 11] });
+      pattern.push({ row: 6, cols: [2, 11] });
+      // linha 7: colunas 2,3,4,5,8,9,10,11
+      pattern.push({ row: 7, cols: [2, 3, 4, 5, 8, 9, 10, 11] });
+      // linhas 8 e 9: colunas 5 e 8
+      pattern.push({ row: 8, cols: [5, 8] });
+      pattern.push({ row: 9, cols: [5, 8] });
+      // linha 10: colunas 5,6,7,8
+      pattern.push({ row: 10, cols: [5, 6, 7, 8] });
+
+      // Cruz centrada na grelha 24x32
+      const rowOffset = 10;
+      const colOffset = 5;
+
+      bluePoints.clear();
+
+      for (const rowDef of pattern) {
+        const rowIndex = rowDef.row - 1 + rowOffset;
+        for (const colOneBased of rowDef.cols) {
+          const colIndex = colOneBased - 1 + colOffset;
+          bluePoints.add(`${colIndex},${rowIndex}`);
+        }
+      }
+    }
+
+    function drawBlueCross() {
+      for (const key of bluePoints) {
+        const [col, row] = key.split(',').map(Number);
+        drawPoint(col, row, '#2f5bd3');
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = canvasFillColor();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+      drawValidPlacements();
+      drawCompletedLines(true);
+      drawBlueCross();
+      drawRedPoints();
+      drawPickerOverlay();
+    }
+
+    function updateRedDotCounter() {
+      const el = document.getElementById('redDotCount');
+      if (el) el.textContent = redPoints.size;
+    }
+
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      // Escalar coordenadas quando o canvas é redimensionado (ex.: mobile com max-width: 100%)
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+
+      // posição relativa à área útil da grelha
+      const relX = x - margin;
+      const relY = y - margin;
+
+      if (relX < 0 || relY < 0) {
+        return;
+      }
+
+      const col = Math.round(relX / cellSize);
+      const row = Math.round(relY / cellSize);
+
+      if (col < 0 || col >= cols || row < 0 || row >= rows) {
+        return;
+      }
+
+      if (gameOverOpen) return;
+
+      const key = `${col},${row}`;
+
+      if (pickerState) {
+        handlePickerClick(col, row);
+        return;
+      }
+
+      if (bluePoints.has(key) && !redPoints.has(key)) {
+        return;
+      }
+
+      if (redPoints.has(key)) {
+        // Uma vez formada a linha, o dot não pode ser apagado
+        if (isOnLine(col, row)) return;
+        clearUndoStack();
+        redPoints.delete(key);
+        // Remover linhas que passavam por este ponto e reacender luzes
+        for (let i = yellowLines.length - 1; i >= 0; i--) {
+          const l = yellowLines[i];
+          if (l.row === row && col >= l.colStart && col <= l.colStart + 4) {
+            yellowLines.splice(i, 1);
+            for (let j = 0; j <= 4; j++) turnLightOnHIfNoSegment(l.colStart + j, l.row);
+          }
+        }
+        for (let i = yellowLinesVert.length - 1; i >= 0; i--) {
+          const l = yellowLinesVert[i];
+          if (l.col === col && row >= l.rowStart && row <= l.rowStart + 4) {
+            yellowLinesVert.splice(i, 1);
+            for (let j = 0; j <= 4; j++) turnLightOnVIfNoSegment(l.col, l.rowStart + j);
+          }
+        }
+        for (let i = yellowLinesDiagMain.length - 1; i >= 0; i--) {
+          const l = yellowLinesDiagMain[i];
+          const dc = col - l.colStart, dr = row - l.rowStart;
+          if (dc === dr && dc >= 0 && dc <= 4) {
+            yellowLinesDiagMain.splice(i, 1);
+            for (let j = 0; j <= 4; j++) turnLightOnD45IfNoSegment(l.colStart + j, l.rowStart + j);
+          }
+        }
+        for (let i = yellowLinesDiagAnti.length - 1; i >= 0; i--) {
+          const l = yellowLinesDiagAnti[i];
+          const dc = col - l.colStart, dr = l.rowStart - row;
+          if (dc === dr && dc >= 0 && dc <= 4) {
+            yellowLinesDiagAnti.splice(i, 1);
+            for (let j = 0; j <= 4; j++) turnLightOnD135IfNoSegment(l.colStart + j, l.rowStart - j);
+          }
+        }
+      } else {
+        const valid = getValidPlacements();
+        if (!valid.has(key)) {
+          return;
+        }
+        pushUndoSnapshot();
+        redPoints.add(key);
+        dismissOnboarding();
+        const candidates = findCandidateLines(col, row);
+        if (candidates.length === 0) {
+          restoreSnapshot(undoStack.pop());
+          if (!undoStack.length) {
+            const btn = document.getElementById('btnUndo');
+            if (btn) btn.disabled = true;
+          }
+          return;
+        }
+        if (candidates.length === 1) {
+          finishPlacement(candidates[0]);
+        } else {
+          playPlaceDot();
+          vibrateShort();
+          startPointPicker(col, row, candidates);
+        }
+      }
+
+      updateRedDotCounter();
+      updateStats();
+      checkGameOver();
+      if ((typeof performance === 'undefined' || !performance.now || performance.now() >= linePulseUntil)) draw();
+    });
+
+    document.getElementById('btnUndo').addEventListener('click', () => {
+      if (pickerState) {
+        cancelPointPicker();
+        return;
+      }
+      undoLastMove();
+    });
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+      restartGame();
+    });
+    document.getElementById('btnPlayAgain').addEventListener('click', () => {
+      restartGame();
+    });
+
+    initBlueCross();
+    updateRedDotCounter();
+    updateStats();
+    draw();
+  </script>
+</body>
+</html>
+

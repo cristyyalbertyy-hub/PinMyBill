@@ -7,7 +7,7 @@ const en: Record<string, string> = {
   "nav.badge": "Collaborator hub",
   "hero.title": "Digital tools for the people who make Prologue happen",
   "hero.subtitle":
-    "Download apps built for the team — events, learning, production. The orange dot marks the {{apps}} universe. One is live today; many more are on the way.",
+    "Download apps built for the team — events, learning, production. The orange dot marks the {{apps}} universe. Two are live today; many more are on the way.",
   "hero.appsLabel": "Apps",
   "hero.available": "available",
   "hero.incoming": "on the way",
@@ -22,6 +22,12 @@ const en: Record<string, string> = {
   "pinmybill.open": "Open app",
   "pinmybill.install": "Install on phone",
   "pinmybill.dashboard": "View dashboard",
+  "dotfive.desc":
+    "Prologue also offers a reasoning and unwind puzzle — for the quiet stretches between events, when the team needs to decompress.",
+  "dotfive.tag.puzzle": "Puzzle",
+  "dotfive.tag.focus": "Reasoning",
+  "dotfive.tag.unwind": "Unwind",
+  "dotfive.play": "Play now",
   "soon.events.name": "Events Hub",
   "soon.events.hint": "Check-in, credentials and live flow — built for Prologue Events.",
   "soon.learning.name": "Learning Portal",
@@ -40,7 +46,7 @@ const ar: Record<string, string> = {
   "nav.badge": "مركز المتعاونين",
   "hero.title": "أدوات رقمية لمن يجعل Prologue يحدث",
   "hero.subtitle":
-    "حمّل تطبيقات صُممت للفريق — فعاليات، تعلّم، إنتاج. النقطة البرتقالية تميز عالم {{apps}}. واحد متاح اليوم؛ والمزيد في الطريق.",
+    "حمّل تطبيقات صُممت للفريق — فعاليات، تعلّم، إنتاج. النقطة البرتقالية تميز عالم {{apps}}. اثنان متاحان اليوم؛ والمزيد في الطريق.",
   "hero.appsLabel": "التطبيقات",
   "hero.available": "متاح",
   "hero.incoming": "في الطريق",
@@ -55,6 +61,12 @@ const ar: Record<string, string> = {
   "pinmybill.open": "فتح التطبيق",
   "pinmybill.install": "تثبيت على الهاتف",
   "pinmybill.dashboard": "عرض لوحة التحكم",
+  "dotfive.desc":
+    "تقدم Prologue أيضاً لعبة للمنطق والاسترخاء — للفترات الهادئة بين الفعاليات، حين يحتاج الفريق إلى التنفّس.",
+  "dotfive.tag.puzzle": "لغز",
+  "dotfive.tag.focus": "تفكير",
+  "dotfive.tag.unwind": "استرخاء",
+  "dotfive.play": "العب الآن",
   "soon.events.name": "Events Hub",
   "soon.events.hint": "تسجيل الدخول والبطاقات والتدفق المباشر — لـ Prologue Events.",
   "soon.learning.name": "Learning Portal",

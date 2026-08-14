@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     "Prologue digital tools for collaborators — download apps built for Events, Learning and more.",
   openGraph: {
     title: "Prologue Apps",
-    description: "Apps for the Prologue team. The first one is here — many more on the way.",
+    description: "Apps for the Prologue team. Two are live — many more on the way.",
     images: [{ url: "/brand/prologue-logo.png" }],
   },
 };
