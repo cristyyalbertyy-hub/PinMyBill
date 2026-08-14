@@ -136,25 +136,25 @@ export function StarfieldCanvas() {
     resize();
     draw();
     window.addEventListener("resize", resize);
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("mouseleave", onLeave);
-    window.addEventListener("touchend", onLeave);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("mouseleave", onLeave);
+    document.addEventListener("touchend", onLeave);
 
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("mouseleave", onLeave);
-      window.removeEventListener("touchend", onLeave);
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("mouseleave", onLeave);
+      document.removeEventListener("touchend", onLeave);
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 h-full w-full"
+      className="pointer-events-none fixed inset-0 z-[30] h-full w-full"
       aria-hidden
     />
   );

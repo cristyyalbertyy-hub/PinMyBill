@@ -64,9 +64,9 @@ export default function PrologueAppsPage() {
   const dotTags = ["puzzle", "focus", "unwind"] as const;
 
   return (
-    <div className="prologue-root relative overflow-x-hidden pb-16">
+    <>
       <StarfieldCanvas />
-
+      <div className="prologue-root relative overflow-x-hidden pb-16">
       <div className="relative z-10 mx-auto max-w-5xl px-5 pt-[max(2rem,env(safe-area-inset-top))]">
         <header className="prologue-reveal mb-16 flex flex-wrap items-center justify-between gap-4">
           <nav className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-widest text-stone-500">
@@ -240,5 +240,6 @@ export default function PrologueAppsPage() {
         </footer>
       </div>
     </div>
+    </>
   );
 }
